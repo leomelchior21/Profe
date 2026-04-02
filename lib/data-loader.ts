@@ -597,10 +597,12 @@ async function parseCurriculumDocuments(files: string[]) {
       let rawText = "";
 
       if (sourceType === "docx") {
-        const result = await mammoth.extractRawText({ path: filePath });
+        const fileBuffer = await fs.readFile(filePath);
+        const result = await mammoth.extractRawText({ buffer: fileBuffer });
         rawText = result.value;
       } else if (sourceType === "xlsx") {
-        const workbook = XLSX.readFile(filePath, { dense: true });
+        const fileBuffer = await fs.readFile(filePath);
+        const workbook = XLSX.read(fileBuffer, { type: "buffer", dense: true });
         rawText = workbook.SheetNames.map((sheetName) => {
           const sheet = workbook.Sheets[sheetName];
           const rows = XLSX.utils.sheet_to_json<(string | number)[]>(sheet, {
