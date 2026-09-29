@@ -148,7 +148,7 @@
       });
       var idx = d.sel.selectedIndex >= 0 ? d.sel.selectedIndex : 0;
       var opSel = d.sel.options[idx];
-      d.btn.textContent = opSel ? opSel.textContent : '';
+      d.btn.textContent = atual ? (opSel ? opSel.textContent : '') : (d.sel.dataset.emptyLabel || (opSel ? opSel.textContent : ''));
       d.dd.classList.toggle('ativo', !!atual);
     });
   }
@@ -164,7 +164,7 @@
     var op1 = A.Store.opcoes({ anoLetivo: state.filtros.anoLetivo });
     state.filtros.ano = preencherSelect($('f-ano'),
       op1.anos.map(function (y) { return { valor: String(y), rotulo: y + 'º ano' }; }),
-      state.filtros.ano, 'Todos');
+      state.filtros.ano, 'Todos os anos');
 
     var op2 = A.Store.opcoes({ anoLetivo: state.filtros.anoLetivo, ano: state.filtros.ano });
     state.filtros.turma = preencherSelect($('f-turma'),
@@ -184,7 +184,7 @@
 
     state.filtros.bimestre = preencherSelect($('f-bimestre'),
       op3.bimestres.map(function (b) { return { valor: String(b), rotulo: A.rotuloBimestre(b) }; }),
-      state.filtros.bimestre, 'Todos');
+      state.filtros.bimestre, 'Todos os bimestres');
 
     $('f-aluno').classList.toggle('destaque-filtro', !!state.filtros.aluno);
 
@@ -628,6 +628,7 @@
       state.traj = {};
       refrescarFiltros();
       render();
+      document.querySelector('.filterbar').scrollLeft = 0;
     });
     $('btn-reuniao').addEventListener('click', abrirReuniao);
     $('btn-resumo').addEventListener('click', abrirRelatorio);

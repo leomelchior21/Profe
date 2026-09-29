@@ -5,6 +5,7 @@
 
 .shell { max-width: 1500px; padding-top: clamp(22px, 2vw, 30px); padding-left: clamp(14px, 2.2vw, 30px); padding-right: clamp(14px, 2.2vw, 30px); }
 .view { min-width: 0; }
+.view:focus { outline: none; }
 .view > *, .grid-2 > *, .card-body, .kpi-hero > * { min-width: 0; }
 .card { padding: clamp(18px, 2vw, 26px); }
 .card-title, .page-title, .kpi-rotulo, .metric-label { overflow-wrap: anywhere; }
@@ -40,6 +41,7 @@
   display: grid;
   grid-template-columns: minmax(0, 1fr) minmax(0, auto) minmax(0, 1fr);
   gap: 12px;
+  padding-block: 13px;
   background: transparent;
   border-bottom: 0;
   box-shadow: none;
@@ -124,6 +126,7 @@
   .cohort-comparison .card-desc { min-height: 0; }
 }
 @media (max-width: 900px) {
+  .topbar { padding-block: 10px; }
   .topbar .filterbar { justify-content: flex-start; }
   .kpi-hero { grid-template-columns: 1fr; }
   .shell { margin-top: 136px; }
@@ -138,7 +141,7 @@
 }
 @media (max-width: 600px) {
   .shell { width: calc(100% - 20px); margin-top: 132px; padding: 18px 12px 140px; }
-  .topbar { padding: 8px 12px; }
+  .topbar { padding: 10px 12px; }
   .topbar .brand { min-width: 0; }
   .topbar .filterbar { justify-content: flex-start; overflow-x: auto; }
   .filterbar .dd-btn { max-width: 170px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }

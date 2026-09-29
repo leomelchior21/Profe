@@ -49,6 +49,10 @@ async function run() {
   await page.locator('#app').waitFor({ state: 'visible' });
   await page.locator('#coorte-resumo').waitFor();
   await page.waitForTimeout(200);
+  check(await page.locator('#f-bimestre + .dd .dd-btn').textContent() === 'Bimestres', 'bimester filter names its contents');
+  check(await page.locator('#f-ano + .dd .dd-btn').textContent() === 'Anos', 'school year filter names its contents');
+  check(await page.locator('.filterbar #f-ano-letivo').count() === 0 && await page.locator('#f-ano-letivo').isHidden(), 'academic year removed from header');
+  check(await page.locator('#view').evaluate(el => getComputedStyle(el).outlineStyle === 'none'), 'main region has no startup focus ring');
   check(await page.locator('#view > .banner').count() === 0, 'cohort banner removed');
   check(await page.locator('.cohort-comparison > #coorte-mediana + #coorte-distribuicao').count() === 1, 'cohort charts share one card');
   check(await page.locator('#coorte-distribuicao .cohort-dist-row').count() > 0, 'distribution rows visible');
@@ -65,6 +69,7 @@ async function run() {
   for (const width of [1440, 1024, 768, 390, 320]) {
     await page.setViewportSize({ width, height: 900 });
     await page.locator('#btn-limpar').click();
+    if (width <= 390) check(await page.locator('.filterbar').evaluate(el => el.scrollLeft === 0), 'mobile filters return to first field after reset');
     for (const id of cohortSections) check(await page.locator('#' + id).count() === 1, 'cohort section ' + id);
     const columns = await page.locator('.cohort-comparison').evaluate(el => getComputedStyle(el).gridTemplateColumns.split(' ').length);
     check(columns === (width > 980 ? 2 : 1), 'cohort comparison columns at ' + width);
