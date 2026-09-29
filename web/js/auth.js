@@ -12,7 +12,7 @@
     this.textContent = show ? 'Ocultar' : 'Mostrar';
     this.setAttribute('aria-pressed', String(show));
   });
-  document.getElementById('btn-lock').addEventListener('click', function () { location.reload(); });
+  document.getElementById('btn-logout').addEventListener('click', function () { location.reload(); });
   form.addEventListener('submit', async function (event) {
     event.preventDefault();
     error.textContent = '';
@@ -43,7 +43,7 @@
       document.getElementById('auth-wall').hidden = true;
       document.getElementById('app').hidden = false;
       document.dispatchEvent(new Event('profe:unlocked'));
-      document.getElementById('view').focus();
+      document.getElementById('view').focus({ preventScroll: true });
     }
     submit.disabled = false;
     submit.textContent = 'Entrar';

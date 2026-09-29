@@ -1579,35 +1579,52 @@ window.Views = (function () {
     var rc = recorte(ctx);
     var dist = A.Store.cohortDistribution(ctx.scope, { materia: rc.materia, bimestre: rc.bimestre });
     var sec = C.secao('coorte-distribuicao', 'Distribuição das médias por turma',
-      'Cada linha mostra a distribuição da ' + rc.medida + ' dos alunos de uma turma' + rc.periodo +
-      ': traço = mínimo e máximo; caixa = 25%, mediana e 75%. Sem identificação de alunos.',
+      'Distribuição da ' + rc.medida + ' por turma' + rc.periodo + '. A caixa mostra a metade central dos alunos; as pontas mostram os extremos.',
       { ajuda: 'Cada linha é uma turma. A caixa vai do 1º quartil (25%) ao 3º (75%); o traço dentro dela é a mediana; as hastes mostram o mínimo e o máximo.' +
         (rc.exibicao ? ' Valores de ' + rc.exibicao + '.' : ' Valores da média geral do aluno.') +
         ' Turmas com caixas longas são mais heterogêneas.' });
     var el = sec.el;
-    if (!dist.length) { sec.body.appendChild(C.vazio('Sem dados.')); return el; }
+    if (!dist.length) { sec.body.appendChild(C.vazio('Sem dados.')); return [el]; }
     var cores = ['#2e5aa8', '#2f8f5b', '#b7791f', '#7c4dbc', '#c05746', '#0e7490'];
-    var host = document.createElement('div');
-    sec.body.appendChild(host);
-    Ch.boxRows(host, {
-      grupos: dist.map(function (c, i) {
-        return {
-          id: c.turma, rotulo: 'Turma ' + c.turma, sub: c.n + ' alunos com nota',
-          box: c.box, cor: cores[i % cores.length], aluno: null
-        };
-      }),
-      xDomain: [0, 10], fmt: f1,
-      refLine: REF != null ? { valor: REF, rotulo: CFG.rotuloReferencia } : null,
-      aria: 'Distribuição das médias por turma',
-      tooltip: function (g) {
-        if (!g.box || !g.box.n) return Ch.tipHTML(esc(g.rotulo), g.sub, [{ rotulo: 'Turma', valor: 'sem dados suficientes' }]);
-        return Ch.tipHTML(esc(g.rotulo), g.sub, [
-          { rotulo: 'Máximo', valor: f1(g.box.max) }, { rotulo: '75%', valor: f1(g.box.q3) },
-          { rotulo: 'Mediana', valor: f1(g.box.mediana) }, { rotulo: '25%', valor: f1(g.box.q1) },
-          { rotulo: 'Mínimo', valor: f1(g.box.min) }
-        ]);
+    var list = document.createElement('div');
+    list.className = 'cohort-dist-list';
+    list.setAttribute('role', 'list');
+    function pos(v) { return Math.max(0, Math.min(100, v * 10)) + '%'; }
+    dist.forEach(function (c, i) {
+      var row = document.createElement('div');
+      row.className = 'cohort-dist-row';
+      row.setAttribute('role', 'listitem');
+      row.style.setProperty('--cohort-color', cores[i % cores.length]);
+      var box = c.box;
+      if (!box || !box.n) {
+        row.innerHTML = '<div class="cohort-dist-top"><div><strong>Turma ' + esc(c.turma) + '</strong><span>' + c.n + ' alunos com nota</span></div><span class="cohort-dist-empty">Sem dados suficientes</span></div>';
+        list.appendChild(row);
+        return;
       }
+      row.setAttribute('aria-label', 'Turma ' + c.turma + ', ' + c.n + ' alunos com nota. Mínimo ' + f1(box.min) +
+        ', primeiro quartil ' + f1(box.q1) + ', mediana ' + f1(box.mediana) + ', terceiro quartil ' + f1(box.q3) + ', máximo ' + f1(box.max) + '.');
+      row.innerHTML = '<div class="cohort-dist-top"><div><strong>Turma ' + esc(c.turma) + '</strong><span>' + c.n + ' alunos com nota</span></div>' +
+        '<div class="cohort-dist-value"><strong>' + f1(box.mediana) + '</strong><span>mediana</span></div></div>' +
+        '<div class="cohort-dist-track" aria-hidden="true">' +
+          (REF != null && REF >= 0 && REF <= 10 ? '<i class="cohort-dist-ref" style="left:' + pos(REF) + '"></i>' : '') +
+          '<i class="cohort-dist-whisker" style="left:' + pos(box.min) + ';width:' + Math.max(0, (box.max - box.min) * 10) + '%"></i>' +
+          '<i class="cohort-dist-box" style="left:' + pos(box.q1) + ';width:' + Math.max(0, (box.q3 - box.q1) * 10) + '%"></i>' +
+          '<i class="cohort-dist-median" style="left:' + pos(box.mediana) + '"></i>' +
+        '</div>' +
+        '<div class="cohort-dist-range"><span>Mín. ' + f1(box.min) + '</span><span>Máx. ' + f1(box.max) + '</span></div>';
+      list.appendChild(row);
     });
+    sec.body.appendChild(list);
+    var axis = document.createElement('div');
+    axis.className = 'cohort-dist-axis';
+    axis.setAttribute('aria-hidden', 'true');
+    axis.innerHTML = '<span>0</span><span>2</span><span>4</span><span>6</span><span>8</span><span>10</span>';
+    sec.body.appendChild(axis);
+    var legend = document.createElement('p');
+    legend.className = 'cohort-dist-legend';
+    legend.innerHTML = '<span><i class="cohort-dist-key-box"></i> 50% central</span><span><i class="cohort-dist-key-median"></i> Mediana</span>' +
+      (REF != null ? '<span><i class="cohort-dist-key-ref"></i> ' + esc(CFG.rotuloReferencia) + '</span>' : '');
+    sec.body.appendChild(legend);
 
     /* histograma das notas do recorte */
     var sec2 = C.secao('coorte-histograma', 'Distribuição das notas',

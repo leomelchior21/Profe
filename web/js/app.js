@@ -290,17 +290,16 @@
 
   function renderCohort(view) {
     var ctx = buildCtx(false);
-    var banner = document.createElement('section');
-    banner.className = 'banner';
-    banner.innerHTML = '<div class="page-head"><div><h1 class="page-title">Turma / coorte</h1>' +
-      '<p class="page-sub">Comparação entre turmas, sem identificar alunos. Selecione um aluno no filtro <b>Aluno</b> para entrar no <b>modo reunião</b>.</p></div>' +
-      '<span class="chip-suave">' + C.icone('pessoas') + ' ' + A.Store.opcoes(ctx.scope).turmas.length + ' turmas no recorte</span></div>';
-    view.appendChild(banner);
     view.appendChild(V.cohortResumo(ctx));
     view.appendChild(V.cohortTabela(ctx));
     view.appendChild(V.cohortEvolucao(ctx));
-    view.appendChild(V.cohortMediana(ctx));
-    V.cohortDistribuicao(ctx).forEach(function (el) { view.appendChild(el); });
+    var comparacao = document.createElement('div');
+    comparacao.className = 'card cohort-comparison';
+    var distribuicao = V.cohortDistribuicao(ctx);
+    comparacao.appendChild(V.cohortMediana(ctx));
+    comparacao.appendChild(distribuicao[0]);
+    view.appendChild(comparacao);
+    if (distribuicao[1]) view.appendChild(distribuicao[1]);
     view.appendChild(V.cohortNotas(ctx));
   }
 

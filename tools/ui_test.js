@@ -49,13 +49,20 @@ async function run() {
   await page.locator('#app').waitFor({ state: 'visible' });
   await page.locator('#coorte-resumo').waitFor();
   await page.waitForTimeout(200);
+  check(await page.locator('#view > .banner').count() === 0, 'cohort banner removed');
+  check(await page.locator('.cohort-comparison > #coorte-mediana + #coorte-distribuicao').count() === 1, 'cohort charts share one card');
+  check(await page.locator('#coorte-distribuicao .cohort-dist-row').count() > 0, 'distribution rows visible');
+  check(await page.locator('#btn-logout').getAttribute('aria-label') === 'Sair do painel', 'logout icon labelled');
   await page.screenshot({ path: path.join(out, 'cohort-desktop.png'), fullPage: true });
   const student = await page.locator('#f-aluno option').nth(1).getAttribute('value');
   for (const width of [1440, 1024, 768, 390, 320]) {
     await page.setViewportSize({ width, height: 900 });
     await page.locator('#btn-limpar').click();
     for (const id of cohortSections) check(await page.locator('#' + id).count() === 1, 'cohort section ' + id);
+    const columns = await page.locator('.cohort-comparison').evaluate(el => getComputedStyle(el).gridTemplateColumns.split(' ').length);
+    check(columns === (width > 980 ? 2 : 1), 'cohort comparison columns at ' + width);
     await fit(page, 'cohort ' + width);
+    if (width === 390) await page.screenshot({ path: path.join(out, 'cohort-mobile.png'), fullPage: true });
     await page.locator('#f-aluno').selectOption(student);
     for (const id of studentSections) check(await page.locator('#' + id).count() === 1, 'student section ' + id);
     await fit(page, 'student ' + width);
@@ -84,7 +91,7 @@ async function run() {
   await page.locator('#btn-limpar').click();
   const all = await page.locator('#f-aluno option').evaluateAll(ops => ops.slice(1).map(o => o.value));
   for (const ra of [...all.slice(0, 3), all[all.length - 1]]) { await page.locator('#f-aluno').selectOption(ra); check(await page.locator('#aluno h1').count() === 1, 'student renders'); }
-  await page.locator('#btn-lock').click();
+  await page.locator('#btn-logout').click();
   await page.locator('#auth-wall').waitFor({ state: 'visible' });
   check(await page.evaluate(() => !window.SCHOOL_DATA), 'lock clears memory');
   await page.setViewportSize({ width: 390, height: 844 });
