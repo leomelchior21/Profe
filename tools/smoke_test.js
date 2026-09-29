@@ -1,0 +1,111 @@
+/* Smoke test do motor analítico (roda no Node, sem navegador).
+   Uso: node tools/smoke_test.js  */
+'use strict';
+const fs = require('fs');
+const path = require('path');
+const vm = require('vm');
+
+const root = path.join(__dirname, '..');
+const sandbox = { window: {}, console, localStorage: null };
+sandbox.globalThis = sandbox;
+vm.createContext(sandbox);
+
+['config.js', 'analytics.js'].forEach((f) => {
+  const code = fs.readFileSync(path.join(root, 'web', 'js', f), 'utf8');
+  vm.runInContext(code, sandbox, { filename: f });
+});
+
+const dados = fs.readFileSync(path.join(root, 'web', 'js', 'dados.js'), 'utf8');
+vm.runInContext(dados, sandbox, { filename: 'dados.js' });
+
+const A = sandbox.window.Analytics;
+A.Store.init(sandbox.window.SCHOOL_DATA);
+
+let falhas = 0;
+function check(nome, cond, extra) {
+  if (cond) console.log('  ok   ' + nome);
+  else { falhas++; console.log('  FALHA ' + nome + (extra ? '  -> ' + extra : '')); }
+}
+
+const op = A.Store.opcoes({});
+console.log('Opções:', op.turmas.join(', '), '| alunos:', op.alunos.length, '| bimestres:', op.bimestres.join(','), '| disciplinas numéricas:', op.materiasNumericas.length);
+
+check('106 alunos indexados', A.Store.alunosDoEscopo({}).length === 106, String(A.Store.alunosDoEscopo({}).length));
+
+/* aluno típico */
+const ra = op.alunos[0].ra;
+const sd = A.Store.studentData(ra, {});
+check('studentData tem disciplinas numéricas', sd && sd.numericas.length >= 8, String(sd && sd.numericas.length));
+check('média geral dentro de 0-10', sd.mediaGeral > 0 && sd.mediaGeral <= 10, String(sd.mediaGeral));
+check('bimestres com nota = [1,2,3]', JSON.stringify(sd.bimestres) === '[1,2,3]', JSON.stringify(sd.bimestres));
+check('média por bimestre calculada', sd.mediaPorBimestre.length === 3 && sd.mediaPorBimestre.every((p) => p.media != null));
+check('insights gerados', A.Insights.student(sd).length > 3, String(A.Insights.student(sd).length));
+check('leitura condensada (<= 15 cards)', A.Insights.student(sd).length <= 15, String(A.Insights.student(sd).length));
+check('sem disciplina repetida no mesmo tom', (function () {
+  const vistos = new Set();
+  return A.Insights.student(sd).every((i) => {
+    if (!i.disciplina) return true;
+    const k = i.disciplina + '|' + i.tom;
+    if (vistos.has(k)) return false;
+    vistos.add(k); return true;
+  });
+})());
+check('monitoramento gerado', A.Insights.monitoring(sd).length > 0);
+check('monitoramento <= 6 e sem disciplina repetida', (function () {
+  const lista = A.Insights.monitoring(sd);
+  const nomeadas = lista.map((m) => (m.texto.match(/em ([^,.]+)/) || [])[1]).filter(Boolean);
+  return lista.length <= 6 && new Set(nomeadas).size === nomeadas.length;
+})());
+check('distribuição da coorte com box e n', (function () {
+  const d = A.Store.cohortDistribution({});
+  return d.length === 4 && d.every((c) => c.box && c.box.n > 0 && c.box.q1 <= c.box.mediana && c.box.q3 >= c.box.mediana);
+})());
+
+const semNota = sd.materias.filter((m) => m.semNota);
+check('disciplinas sem nota detectadas', semNota.length > 0, semNota.map((m) => m.nome).join('|'));
+check('MB ausente no 3º bi não virou zero', sd.numericas.every((m) => {
+  const s = m.serie.find((x) => x.bimestre === 3);
+  return !s || s.mb != null || s.nota === s.nb;
+}));
+
+/* recuperação */
+const comRec = Object.keys(A.Store.opcoes({}).alunos).length &&
+  A.Store.alunosDoEscopo({}).map((a) => A.Store.studentData(a.ra, {})).filter((s) => s.recuperacoes.length);
+check('alunos com recuperação encontrados', comRec.length > 50, String(comRec.length));
+const rec0 = comRec[0].recuperacoes[0];
+check('evento de recuperação consistente', rec0.nb != null && rec0.recuperacao != null && rec0.mb != null && rec0.ganho != null, JSON.stringify(rec0));
+
+/* contexto de turma */
+const ctx = A.Store.classContext(sd, sd.numericas[0].nome);
+check('contexto da turma com 25+ alunos', ctx.n >= 24, String(ctx.n));
+check('quartis ordenados', ctx.box.q1 <= ctx.box.mediana && ctx.box.mediana <= ctx.box.q3, JSON.stringify(ctx.box));
+check('aluno presente na distribuição', ctx.aluno != null);
+
+/* coorte */
+const coorte = A.Store.cohort({});
+check('4 turmas', coorte.length === 4, coorte.map((c) => c.turma).join(','));
+check('medianas plausíveis', coorte.every((c) => c.medianaMedia == null || (c.medianaMedia >= 0 && c.medianaMedia <= 10)));
+const med = A.Store.cohortSubjectMedians({}, null);
+check('mediana disciplina x turma', med.rows.length >= 8 && med.turmas.length === 4, med.rows.length + 'x' + med.turmas.length);
+const evo = A.Store.cohortEvolution({});
+check('evolução da coorte', evo.series.length === 4 && evo.series[0].serie.length === 3);
+
+/* aluno transferido sem notas */
+const transferido = A.Store.alunosDoEscopo({}).find((a) => a.status === 'Transferido');
+if (transferido) {
+  const sdt = A.Store.studentData(transferido.ra, {});
+  check('aluno transferido tratado sem erro', sdt != null, transferido.nome);
+  console.log('       transferido:', transferido.nome, '| disciplinas com nota:', sdt.numericas.length, '| insights:', A.Insights.student(sdt).length);
+}
+
+/* filtro por turma */
+const sd9b = A.Store.studentData(A.Store.alunosDoEscopo({ turma: '9B' })[0].ra, { turma: '9B' });
+check('escopo por turma funciona', sd9b && sd9b.numericas.length > 0);
+
+/* nenhuma inferência comportamental */
+const textos = A.Insights.student(sd).map((i) => i.texto).join(' ').toLowerCase();
+const proibidos = ['desmotivad', 'preguiç', 'não estuda', 'desinteress', 'concentraç', 'esforço', 'culpa'];
+check('insights sem inferência psicológica', proibidos.every((p) => !textos.includes(p)));
+
+console.log(falhas ? '\n' + falhas + ' FALHA(S)' : '\nTodos os testes passaram.');
+process.exit(falhas ? 1 : 0);

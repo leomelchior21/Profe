@@ -1,0 +1,184 @@
+﻿<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Autoteste do painel</title>
+<link rel="stylesheet" href="../web/css/app.css">
+</head>
+<body>
+<!-- Página de autoteste (desenvolvimento). Rode com:
+     chrome --headless=new --allow-file-access-from-files --virtual-time-budget=25000 --dump-dom tools/selftest.html -->
+<div class="shell" id="app">
+  <header class="topbar">
+    <nav class="nav-tabs">
+      <button type="button" class="nav-tab" data-alvo="aluno">Visão geral</button>
+      <button type="button" class="nav-tab" data-alvo="trajetoria">Trajetória</button>
+      <button type="button" class="nav-tab" data-alvo="disciplinas-tabela">Disciplinas</button>
+      <button type="button" class="nav-tab" data-alvo="contexto">Contexto</button>
+      <button type="button" class="nav-tab" data-alvo="padroes">Padrões</button>
+      <button type="button" class="nav-tab" data-alvo="detalhados">Dados</button>
+    </nav>
+    <span id="nav-aluno" class="nav-aluno"></span>
+    <span class="scope-line" id="scope-line"></span>
+    <button type="button" class="chip-alertas oculto" id="chip-alertas">Pontos de atenção <b id="chip-alertas-num">0</b></button>
+  </header>
+  <nav class="filterbar" aria-label="Filtros">
+    <div class="filter"><label for="f-ano-letivo">Ano letivo</label><select id="f-ano-letivo"></select></div>
+    <div class="filter"><label for="f-ano">Ano escolar</label><select id="f-ano"></select></div>
+    <div class="filter"><label for="f-turma">Turma</label><select id="f-turma"></select></div>
+    <div class="filter"><label for="f-aluno">Aluno</label><select id="f-aluno"></select></div>
+    <div class="filter"><label for="f-disciplina">Disciplina</label><select id="f-disciplina"></select></div>
+    <div class="filter"><label for="f-bimestre">Bimestre</label><select id="f-bimestre"></select></div>
+    <div class="filter"><button type="button" id="btn-limpar" class="btn ghost">Limpar filtros</button></div>
+  </nav>
+  <button type="button" id="btn-reuniao" class="btn">Modo reunião</button>
+  <button type="button" id="btn-resumo" class="btn">Gerar resumo</button>
+  <main id="view"></main>
+</div>
+<div id="meeting" class="meeting" aria-hidden="true" role="dialog">
+  <header class="meeting-head">
+    <div id="meeting-step-head" class="meeting-step-head"></div>
+    <button type="button" id="meeting-print" class="btn">Gerar resumo</button>
+    <button type="button" id="meeting-close" class="btn ghost">Sair</button>
+  </header>
+  <div id="meeting-progress" class="meeting-progress"></div>
+  <div id="meeting-body" class="meeting-body"></div>
+  <footer class="meeting-foot">
+    <button type="button" id="meeting-prev" class="btn">Anterior</button>
+    <span id="meeting-step-label"></span>
+    <span id="meeting-aluno" class="meeting-aluno"></span>
+    <button type="button" id="meeting-next" class="btn primary">Próximo</button>
+  </footer>
+</div>
+<div id="printOverlay" class="print-overlay" aria-hidden="true"><div id="printReport"></div></div>
+
+<pre id="selftest-result" style="display:none"></pre>
+
+<script>
+window.__erros = [];
+window.addEventListener('error', function (e) {
+  window.__erros.push((e.message || 'erro') + ' @ ' + (e.filename || '?') + ':' + (e.lineno || 0));
+});
+</script>
+<script src="../web/js/dados.js"></script>
+<script src="../web/js/config.js"></script>
+<script src="../web/js/analytics.js"></script>
+<script src="../web/js/charts.js"></script>
+<script src="../web/js/components.js"></script>
+<script src="../web/js/views.js"></script>
+<script src="../web/js/app.js"></script>
+<script>
+(function () {
+  function $(id) { return document.getElementById(id); }
+  function q(sel) { return document.querySelectorAll(sel).length; }
+  var relatorio = {};
+
+  function esperar(ms) { return new Promise(function (r) { setTimeout(r, ms); }); }
+
+  function snapshot(nome) {
+    relatorio[nome] = {
+      titulo: ($('aluno') && $('aluno').querySelector('h1')) ? $('aluno').querySelector('h1').textContent : null,
+      metricas: q('.kpi'),
+      linhasTabela: q('#disciplinas-tabela tbody tr'),
+      svgs: q('#view svg'),
+      insights: q('#leitura .insight'),
+      trajetoria: q('#trajetoria svg'),
+      perfil: q('#perfil svg'),
+      contexto: q('#contexto svg'),
+      mapa: q('#mapa tbody tr'),
+      variacao: q('#variacao tbody tr'),
+      consistencia: q('#consistencia svg'),
+      recuperacao: q('#recuperacao svg'),
+      areas: q('#areas svg'),
+      miniaturas: q('#pequenos .mini-card'),
+      padroes: q('#padroes svg'),
+      proximos: q('#proximos li'),
+      tabela: q('#detalhados tbody tr'),
+      coorteTabela: q('#coorte-mediana tbody tr'),
+      semRolagemHorizontal: document.documentElement.scrollWidth <= window.innerWidth + 1,
+      largura: document.documentElement.scrollWidth + 'x' + window.innerWidth
+    };
+  }
+
+  async function run() {
+    try {
+      await esperar(250);
+      snapshot('inicial_coorte');
+
+      var ra = null;
+      var regs = window.SCHOOL_DATA.registros;
+      for (var i = 0; i < regs.length; i++) { if (regs[i].recuperacao != null) { ra = regs[i].ra; break; } }
+      var sel = $('f-aluno');
+      sel.value = ra;
+      sel.dispatchEvent(new Event('change'));
+      await esperar(500);
+      snapshot('aluno');
+
+      var fd = $('f-disciplina');
+      fd.value = window.CONFIG.areas[0].disciplinas[0];
+      fd.dispatchEvent(new Event('change'));
+      await esperar(450);
+      relatorio.filtro_disciplina_produtos = q('#view section');
+
+      var fb = $('f-bimestre');
+      fb.value = '2';
+      fb.dispatchEvent(new Event('change'));
+      await esperar(450);
+      relatorio.filtro_bimestre_resumo = q('.metrics-grid .metric');
+
+      $('btn-limpar').click();
+      await esperar(350);
+      snapshot('apos_limpar');
+
+      sel = $('f-aluno');
+      sel.value = ra;
+      sel.dispatchEvent(new Event('change'));
+      await esperar(450);
+      $('btn-reuniao').click();
+      await esperar(400);
+      relatorio.reuniao = { aberto: $('meeting').classList.contains('open'), passos: q('#meeting-progress .dot'), svgs_passo1: q('#meeting-body svg'), titulo: $('meeting-step-head').textContent.slice(0, 60) };
+      for (var p = 0; p < 8; p++) {
+        $('meeting-next').click();
+        await esperar(320);
+        relatorio.reuniao['passo' + (p + 2) + '_svgs'] = q('#meeting-body svg');
+      }
+      $('meeting-close').click();
+      await esperar(200);
+      relatorio.reuniao.fechado = !$('meeting').classList.contains('open');
+
+      $('btn-resumo').click();
+      await esperar(500);
+      relatorio.relatorio = {
+        aberto: $('printOverlay').classList.contains('open'),
+        svgs: q('#printReport svg'),
+        cards: q('#printReport .card'),
+        legenda: q('#printReport .legend-chip') > 0
+      };
+      $('printReport').querySelector('.print-actions .btn:not(.primary)').click();
+
+      var semNota = null;
+      for (var j = 0; j < regs.length; j++) {
+        if (regs[j].status === 'Transferido' && regs[j].nota == null) { semNota = regs[j].ra; break; }
+      }
+      if (semNota) {
+        $('f-aluno').value = semNota;
+        $('f-aluno').dispatchEvent(new Event('change'));
+        await esperar(450);
+        relatorio.aluno_transferido_sem_nota = { metricas: q('.metrics-grid .metric'), svgs: q('#view svg'), rolagem: document.documentElement.scrollWidth <= window.innerWidth + 1 };
+      }
+
+      relatorio.erros = window.__erros;
+    } catch (err) {
+      relatorio.excecao = String(err && err.stack || err);
+    }
+    $('selftest-result').textContent = JSON.stringify(relatorio, null, 1);
+    document.title = 'AUTOTESTE PRONTO ' + (window.__erros.length ? window.__erros.length + ' ERROS' : 'SEM ERROS');
+  }
+
+  if (document.readyState === 'loading') document.addEventListener('DOMContentLoaded', function () { setTimeout(run, 50); });
+  else setTimeout(run, 50);
+})();
+</script>
+</body>
+</html>

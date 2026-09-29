@@ -1,9 +1,9 @@
-.next
 node_modules
-.codex
-out
-dist
-coverage
 *.log
 .DS_Store
 Thumbs.db
+
+# dados individuais de estudantes — nunca versionar
+data/
+source/
+web/js/dados.js
