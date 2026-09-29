@@ -104,6 +104,7 @@
   }
 
   function abrirDropdown(d) {
+    if (d.sel.disabled) return;
     d.menu.classList.add('aberto');
     d.dd.classList.add('aberto');
     d.btn.setAttribute('aria-expanded', 'true');
@@ -135,6 +136,7 @@
     Object.keys(dropdowns).forEach(function (k) {
       var d = dropdowns[k];
       var atual = d.sel.value;
+      d.btn.disabled = d.sel.disabled;
       d.menu.innerHTML = '';
       Array.prototype.forEach.call(d.sel.options, function (op) {
         var b = document.createElement('button');
@@ -166,12 +168,16 @@
       op1.anos.map(function (y) { return { valor: String(y), rotulo: y + 'º ano' }; }),
       state.filtros.ano, 'Anos');
 
-    var op2 = A.Store.opcoes({ anoLetivo: state.filtros.anoLetivo, ano: state.filtros.ano });
+    var anoSelecionado = !!state.filtros.ano;
+    ['f-turma', 'f-aluno', 'f-disciplina', 'f-bimestre'].forEach(function (id) {
+      $(id).disabled = !anoSelecionado;
+    });
+    var op2 = anoSelecionado ? A.Store.opcoes({ anoLetivo: state.filtros.anoLetivo, ano: state.filtros.ano }) : { turmas: [] };
     state.filtros.turma = preencherSelect($('f-turma'),
       op2.turmas.map(function (t) { return { valor: t, rotulo: 'Turma ' + t }; }),
       state.filtros.turma, 'Turmas');
 
-    var op3 = A.Store.opcoes({ anoLetivo: state.filtros.anoLetivo, ano: state.filtros.ano, turma: state.filtros.turma });
+    var op3 = anoSelecionado ? A.Store.opcoes({ anoLetivo: state.filtros.anoLetivo, ano: state.filtros.ano, turma: state.filtros.turma }) : { alunos: [], materiasNumericas: [], bimestres: [] };
     var alunosItens = op3.alunos.map(function (a) { return { valor: a.ra, rotulo: a.nome + '  ·  ' + a.turma }; });
     var permitidos = {};
     op3.alunos.forEach(function (a) { permitidos[a.ra] = 1; });
@@ -203,7 +209,7 @@
       partes.push(matSel ? matSel.rotulo : state.filtros.disciplina);
     }
     if (state.filtros.bimestre) partes.push(A.rotuloBimestre(Number(state.filtros.bimestre)) + ' em foco');
-    $('scope-line').textContent = partes.join('  ·  ');
+    $('scope-line').textContent = anoSelecionado ? partes.join('  ·  ') : 'Selecione um ano';
 
     $('btn-reuniao').disabled = !state.filtros.aluno;
     $('btn-resumo').disabled = !state.filtros.aluno;
@@ -247,7 +253,22 @@
     view.innerHTML = '';
     view.setAttribute('aria-busy', 'true');
 
-    if (state.filtros.aluno) {
+    document.querySelector('.app-foot').hidden = !state.filtros.ano;
+    if (!state.filtros.ano) {
+      var inicio = C.el('section', 'card');
+      inicio.id = 'selecionar-ano';
+      inicio.innerHTML = '<div class="empty"><h1 class="page-title">Selecione um ano</h1>' +
+        '<p>Escolha o ano escolar para visualizar as turmas e os resultados.</p>' +
+        '<button type="button" class="btn primary" id="btn-selecionar-ano">Selecionar ano</button></div>';
+      view.appendChild(inicio);
+      $('btn-selecionar-ano').addEventListener('click', function (e) {
+        e.stopPropagation();
+        var btn = dropdowns['f-ano'].btn;
+        btn.scrollIntoView({ block: 'nearest', inline: 'nearest' });
+        btn.focus();
+        btn.click();
+      });
+    } else if (state.filtros.aluno) {
       V.renderStudent(view, buildCtx(false));
     } else {
       renderCohort(view);

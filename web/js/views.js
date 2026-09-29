@@ -1388,7 +1388,10 @@ window.Views = (function () {
       m.serie.forEach(function (s) {
         var rec = sd.aluno.recs.filter(function (r) { return r.materia === m.nome && r.bimestre === s.bimestre; })[0];
         var tr = document.createElement('tr');
-        [m.rotulo, rb(s.bimestre), f1(s.nb), f1(s.recuperacao), f1(s.mb), f1(s.nota), f1(s.fa), rec ? rec.fonte_pagina : '—'].forEach(function (v, i) {
+        var fonte = rec ? rec.fonte_pagina : '—';
+        if (rec && rec.fonte_frequencia) fonte += ' · Frequência: ' + rec.fonte_frequencia;
+        if (rec && rec.fonte_status) fonte += ' · Situação: ' + rec.fonte_status;
+        [m.rotulo, rb(s.bimestre), f1(s.nb), f1(s.recuperacao), f1(s.mb), f1(s.nota), f1(s.fa), fonte].forEach(function (v, i) {
           var td = document.createElement('td');
           td.textContent = v;
           if (i < 2) td.className = 'strong';

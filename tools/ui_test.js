@@ -48,7 +48,17 @@ async function run() {
   await page.locator('#password').fill(password);
   await page.locator('#login-submit').click();
   await page.locator('#app').waitFor({ state: 'visible' });
-  await page.locator('#coorte-resumo').waitFor();
+  await page.locator('#selecionar-ano').waitFor();
+  check(await page.locator('#view h1').textContent() === 'Selecione um ano', 'initial view requests a school year');
+  check(await page.locator('#coorte-resumo, #aluno, #view svg').count() === 0, 'no results before choosing a school year');
+  check(await page.locator('.app-foot').isHidden(), 'analysis navigation hidden without a school year');
+  for (const id of ['f-aluno', 'f-turma', 'f-disciplina', 'f-bimestre']) {
+    check(await page.locator('#' + id + ' + .dd .dd-btn').isDisabled(), id + ' waits for a school year');
+    check(await page.locator('#' + id + ' option').count() === 1, id + ' has no unscoped options');
+  }
+  await page.locator('#btn-selecionar-ano').click();
+  check(await page.locator('#f-ano + .dd .dd-btn').getAttribute('aria-expanded') === 'true', 'prompt opens year selection');
+  await page.locator('.dd-menu.aberto [data-valor="7"]').click();
   check(await page.locator('#f-ano option[value="7"]').count() === 1, 'seventh grade is available');
   await page.locator('#f-ano').selectOption('7');
   check(JSON.stringify(await page.locator('#f-turma option').evaluateAll(ops => ops.slice(1).map(o => o.value))) === '["7A","7B","7C"]', 'grade filter shows only seventh-grade classes');
@@ -65,6 +75,8 @@ async function run() {
     check(await page.locator('#' + id + ' + .dd .dd-btn').textContent() === label, label + ' filter has concise placeholder');
     check(await page.locator('#' + id + ' option').first().textContent() === label, label + ' reset option has concise name');
   }
+  check(await page.locator('#selecionar-ano').isVisible(), 'clearing filters restores year prompt');
+  await page.locator('#f-ano').selectOption('7');
   check(await page.locator('.filterbar #f-ano-letivo').count() === 0 && await page.locator('#f-ano-letivo').isHidden(), 'academic year removed from header');
   check(await page.locator('#view').evaluate(el => getComputedStyle(el).outlineStyle === 'none'), 'main region has no startup focus ring');
   check(await page.locator('#view > .banner').count() === 0, 'cohort banner removed');
@@ -85,8 +97,13 @@ async function run() {
     await page.setViewportSize({ width, height: 900 });
     await page.locator('#btn-limpar').click();
     if (width <= 390) check(await page.locator('.filterbar').evaluate(el => el.scrollLeft === 0), 'mobile filters return to first field after reset');
+    check(await page.locator('#selecionar-ano').isVisible(), 'year prompt visible at ' + width);
+    await fit(page, 'year prompt ' + width);
+    if (width === 390 || width === 1440) await page.screenshot({ path: path.join(out, 'year-selection-' + width + '.png'), fullPage: true });
+    await page.locator('#btn-selecionar-ano').click();
+    await page.locator('.dd-menu.aberto [data-valor="7"]').click();
     for (const id of cohortSections) check(await page.locator('#' + id).count() === 1, 'cohort section ' + id);
-    check(await page.locator('#coorte-resumo .accent .kpi-turma-badge').count() === 7, 'class cards show class badges');
+    check(await page.locator('#coorte-resumo .accent .kpi-turma-badge').count() === 3, 'class cards show only selected year');
     check(await page.locator('#coorte-resumo .accent .avatar').count() === 0, 'class cards no longer show letter avatars');
     check(await page.locator('#coorte-resumo .accent').first().evaluate(card => {
       const help = card.querySelector('.kpi-help-canto').getBoundingClientRect();
@@ -184,15 +201,30 @@ async function run() {
   await page.emulateMedia({ media: 'screen' });
   await page.keyboard.press('Escape');
   await page.locator('#btn-limpar').click();
+  await page.locator('#f-ano').selectOption('9');
+  check(await page.locator('#coorte-resumo .accent .kpi-turma-badge').count() === 4, 'ninth grade shows its four classes');
+  check(await page.locator('#f-aluno option').count() === 108, 'updated ninth grade has 107 students');
+  for (const [turma, total] of [['9A', 26], ['9B', 30], ['9C', 24], ['9D', 27]]) {
+    await page.locator('#f-turma').selectOption(turma);
+    check(await page.locator('#f-aluno option').count() === total + 1, turma + ' updated roster');
+  }
+  await page.locator('#f-turma').selectOption('');
   const all = await page.locator('#f-aluno option').evaluateAll(ops => ops.slice(1).map(o => o.value));
   for (const ra of [...all.slice(0, 3), all[all.length - 1]]) { await page.locator('#f-aluno').selectOption(ra); check(await page.locator('#aluno h1').count() === 1, 'student renders'); }
   await page.locator('#f-turma').selectOption('9B');
   const classList = await page.locator('#f-aluno option').evaluateAll(ops => ops.slice(1).map(o => o.value));
   await page.locator('#f-aluno').selectOption(classList[0]);
+  check((await page.locator('#detalhados').textContent()).includes('Relatorio 9B 1.pdf'), 'updated grade source is shown');
+  check((await page.locator('#detalhados').textContent()).includes('Frequência: 9b_3o bi.pdf'), 'previous attendance source is shown separately');
   await page.locator('#aluno .student-switch-next').click();
   check(await page.locator('#f-aluno').inputValue() === classList[1], 'student arrows follow filtered class list');
   await page.locator('#f-aluno').selectOption(classList[classList.length - 1]);
   check(await page.locator('#aluno .student-switch-next').isDisabled(), 'last student has no next button');
+  await page.locator('#f-ano').selectOption('');
+  check(await page.locator('#selecionar-ano').isVisible(), 'removing year selection restores prompt');
+  check(await page.locator('#aluno, #coorte-resumo').count() === 0, 'removing year selection clears student and cohort results');
+  check(await page.locator('#f-aluno').inputValue() === '' && await page.locator('#f-turma').inputValue() === '', 'removing year selection clears dependent selections');
+  check(await page.locator('#btn-reuniao').isDisabled() && await page.locator('#btn-resumo').isDisabled(), 'student actions unavailable without a year');
   await page.locator('#btn-logout').click();
   await page.locator('#auth-wall').waitFor({ state: 'visible' });
   check(await page.evaluate(() => !window.SCHOOL_DATA), 'lock clears memory');

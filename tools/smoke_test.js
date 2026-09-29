@@ -42,16 +42,21 @@ function check(nome, cond, extra) {
 const op = A.Store.opcoes({});
 console.log('Opções:', op.turmas.join(', '), '| alunos:', op.alunos.length, '| bimestres:', op.bimestres.join(','), '| disciplinas numéricas:', op.materiasNumericas.length);
 
-check('196 alunos indexados', A.Store.alunosDoEscopo({}).length === 196, String(A.Store.alunosDoEscopo({}).length));
-check('106 alunos dos nonos preservados', A.Store.alunosDoEscopo({ ano: '9' }).length === 106);
+check('197 alunos indexados', A.Store.alunosDoEscopo({}).length === 197, String(A.Store.alunosDoEscopo({}).length));
+check('107 alunos dos nonos atualizados', A.Store.alunosDoEscopo({ ano: '9' }).length === 107);
 check('turmas dos sétimos disponíveis', JSON.stringify(A.Store.opcoes({ ano: '7' }).turmas) === '["7A","7B","7C"]');
-for (const [turma, total] of [['7A', 29], ['7B', 31], ['7C', 30]]) {
+for (const [turma, total] of [['7A', 29], ['7B', 31], ['7C', 30], ['9A', 26], ['9B', 30], ['9C', 24], ['9D', 27]]) {
   check(turma + ': ' + total + ' alunos', A.Store.alunosDoEscopo({ turma }).length === total);
 }
 const seventhRecords = sandbox.window.SCHOOL_DATA.registros.filter(r => r.ano === '7');
 check('sétimos usam somente MB nas comparações', seventhRecords.length > 0 && seventhRecords.every(r => r.nota === r.mb));
 check('parciais sem MB permanecem sem nota', seventhRecords.some(r => r.avaliacoes_origem.NP && r.mb == null && r.nota == null));
 check('sétimos não inventam frequência', seventhRecords.every(r => r.fa == null && r.fr == null));
+check('todas as comparações usam MB', sandbox.window.SCHOOL_DATA.registros.every(r => r.nota === r.mb));
+const ninthRecords = sandbox.window.SCHOOL_DATA.registros.filter(r => r.ano === '9');
+check('notas dos nonos vêm dos relatórios novos', ninthRecords.every(r => r.fonte_pagina.startsWith('Relatorio 9')));
+check('frequência preservada com origem própria', ninthRecords.filter(r => r.fa != null || r.fr != null).every(r => r.fonte_frequencia));
+check('Produção de Texto sem MB no terceiro não usa nota antiga', ninthRecords.filter(r => r.materia === 'PRODUÇÃO DE TEXTO' && r.bimestre === 3).every(r => r.mb == null && r.nota == null));
 
 /* aluno típico */
 const ra = A.Store.opcoes({ ano: '9' }).alunos[0].ra;
@@ -84,9 +89,9 @@ check('distribuição da coorte com box e n', (function () {
 
 const semNota = sd.materias.filter((m) => m.semNota);
 check('disciplinas sem nota detectadas', semNota.length > 0, semNota.map((m) => m.nome).join('|'));
-check('MB ausente no 3º bi não virou zero', sd.numericas.every((m) => {
+check('MB ausente no 3º bi permanece sem nota', sd.numericas.every((m) => {
   const s = m.serie.find((x) => x.bimestre === 3);
-  return !s || s.mb != null || s.nota === s.nb;
+  return !s || s.mb != null || s.nota == null;
 }));
 
 /* recuperação */

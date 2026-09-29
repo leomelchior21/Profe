@@ -17,7 +17,7 @@ A senha de acesso é a definida para a escola. Ela desbloqueia o dataset criptog
 - **Padrões:** variações, consistência e áreas curriculares.
 - **Dados:** registros e origem dos valores.
 
-O painel mantém todas as análises em uma página contínua; os botões no rodapé levam às seções. Sem aluno selecionado, mostra as turmas. O modo reunião e o resumo impresso mostram o percurso anual do estudante.
+O painel pede a seleção de um ano escolar antes de mostrar resultados. Após a escolha, mantém todas as análises em uma página contínua; os botões no rodapé levam às seções. Sem aluno selecionado, mostra as turmas daquele ano. Limpar os filtros ou retirar o ano selecionado volta à tela de seleção. O modo reunião e o resumo impresso mostram o percurso anual do estudante.
 
 Média individual e mediana da turma são medidas distintas. As sugestões são baseadas em regras descritivas, sem inferências sobre comportamento ou causas. Lacunas não são convertidas em zero. A configuração da escola e os critérios ficam em `web/js/config.js`.
 
@@ -42,7 +42,19 @@ A importação substitui apenas as turmas e anos letivos presentes nos arquivos,
 
 Nos CSVs, as comparações usam exclusivamente **MB**. MB vazia permanece sem nota, mesmo com avaliações parciais preenchidas. `--somar-np-nb` registra a soma das parcelas NP + NB como nota anterior à recuperação; as parcelas originais ficam em `avaliacoes_origem`, e a origem inclui o arquivo e a linha. Asteriscos e campos vazios não viram zero; faltas, frequência e situação de matrícula não são inferidas.
 
-Depois, defina `PANEL_PASSWORD`, execute `npm run protect` e `npm test`, e remova a variável. Publique somente o pacote criptografado. Se reexecutar o extrator de PDFs, importe os CSVs novamente antes de proteger os dados.
+Depois, defina `PANEL_PASSWORD`, execute `npm run protect` e `npm test`, e remova a variável. Publique somente o pacote criptografado. Se reexecutar o extrator dos boletins antigos, importe novamente os CSVs e os relatórios gerais PDF antes de proteger os dados.
+
+### Relatórios gerais PDF dos 9º anos
+
+Com PyMuPDF instalado e os novos PDFs em `source/`, atualize o dataset privado existente:
+
+```powershell
+python tools/import_notas_pdf.py "source/Relatorio 9A 1.pdf" "source/Relatorio 9B 1.pdf" "source/Relatorio 9C.pdf" "source/Relatorio 9D.pdf"
+```
+
+As notas e recuperações vêm dos novos relatórios. As comparações usam **somente MB**, inclusive quando há NP e NB preenchidas; MB ausente fica sem nota. NP + NB fica registrada como nota anterior à recuperação, com as parcelas originais preservadas. Os nomes truncados de disciplinas são normalizados, e números quebrados em duas linhas no PDF são recompostos.
+
+Faltas, frequência e situação de matrícula são preservadas dos boletins anteriores, pois não constam nesses relatórios. Suas fontes aparecem separadas na tabela de dados detalhados. As demais turmas permanecem intactas. A importação interrompe se o relatório omitir algum aluno já cadastrado na turma. Depois, execute `npm run protect` e `npm test` com `PANEL_PASSWORD` definida, removendo a variável ao terminar.
 
 ## Vercel Analytics
 
@@ -54,6 +66,7 @@ O build copia o módulo do pacote `@vercel/analytics` para `web/js/vendor/`. Em 
 
 - `node tools/smoke_test.js`: cálculos, lacunas, recuperação, turmas e insights. Sem os arquivos privados locais, defina `PANEL_PASSWORD` para testar o pacote criptografado.
 - `python -B tools/test_import_notas_csv.py`: importação CSV com dados fictícios, MB ausente, zeros, acentos, preservação das outras turmas e reimportação sem duplicatas.
+- `python -B tools/test_import_notas_pdf.py`: importação PDF com dados fictícios, notas atualizadas, MB ausente, números quebrados em linhas e preservação da frequência com sua origem.
 - Defina `$env:PANEL_PASSWORD` e execute `npm test`: testes analíticos e de navegador. Se necessário, execute `npx playwright install chromium` antes.
 - Capturas e um PDF de validação são salvos em `artifacts/` (privados, ignorados pelo Git).
 

@@ -10,7 +10,7 @@ Regras de leitura:
   - Colunas da tabela do boletim, por bimestre: NB (nota bimestral), R (recuperacao), MB (media bimestral), FA (faltas)
   - Asterisco (*) significa disciplina sem nota numerica (ex.: MAKER, MUSICA, TEATRO)
   - Campo vazio  -> None (nunca tratado como zero)
-  - "nota" = MB quando registrada; caso contrario NB (bimestre em andamento sem MB registrada no boletim)
+  - "nota" = MB; sem MB registrada, a nota permanece ausente mesmo quando há NB
 """
 
 import csv
@@ -162,7 +162,7 @@ def main():
                     if nb is None and rec is None and mb is None and fa is None:
                         continue
 
-                    nota = mb if mb is not None else nb
+                    nota = mb
 
                     registros.append({
                         "ano_letivo": ident["ano_letivo"],

@@ -11,7 +11,7 @@ ROOT = Path(__file__).resolve().parent.parent
 FIELDS = [
     "ano_letivo", "ano", "curso", "turma", "aluno", "ra", "status", "materia",
     "bimestre", "nota", "nb", "recuperacao", "mb", "fa", "total_pontos", "tf", "fr",
-    "fonte_pagina", "avaliacoes_origem",
+    "fonte_pagina", "avaliacoes_origem", "fonte_frequencia", "fonte_status",
 ]
 
 
@@ -125,7 +125,8 @@ def merge_dataset(dataset, records, sources):
     if len(keys) != len(combined):
         raise ValueError("Registros duplicados na importação")
     meta = dict(dataset["meta"])
-    active_sources = {r["fonte_pagina"].split("#", 1)[0] for r in preserved}
+    active_sources = {r[field].split("#", 1)[0] for r in preserved
+                      for field in ("fonte_pagina", "fonte_frequencia", "fonte_status") if r.get(field)}
     meta.update(
         gerado_de=list(dict.fromkeys([s for s in meta["gerado_de"] if s in active_sources] + sources)),
         total_alunos=len({r["ra"] for r in combined}), total_registros=len(combined),
@@ -135,23 +136,31 @@ def merge_dataset(dataset, records, sources):
     return {"meta": meta, "registros": combined}
 
 
+def read_dataset():
+    text = (ROOT / "data/dados.js").read_text(encoding="utf-8")
+    return json.loads(text.split("window.SCHOOL_DATA =", 1)[1].strip().removesuffix(";"))
+
+
+def write_dataset(dataset):
+    (ROOT / "data/dados.js").write_text(
+        "/* GERADO AUTOMATICAMENTE pelos importadores de boletins. */\nwindow.SCHOOL_DATA = " +
+        json.dumps(dataset, ensure_ascii=False) + ";\n", encoding="utf-8")
+    with (ROOT / "data/boletins.csv").open("w", encoding="utf-8-sig", newline="") as stream:
+        writer = csv.DictWriter(stream, fieldnames=FIELDS)
+        writer.writeheader()
+        for record in dataset["registros"]:
+            writer.writerow({**record, "avaliacoes_origem": json.dumps(record.get("avaliacoes_origem", {}), ensure_ascii=False)})
+
+
 def main():
     parser = argparse.ArgumentParser(description=__doc__)
     parser.add_argument("files", nargs="+", type=Path)
     parser.add_argument("--somar-np-nb", action="store_true",
                         help="Usa NP + NB como nota anterior à recuperação. Comparações usam somente MB.")
     args = parser.parse_args()
-    target = ROOT / "data/dados.js"
-    original = target.read_text(encoding="utf-8").split("window.SCHOOL_DATA =", 1)[1].strip().removesuffix(";")
     incoming = [r for path in args.files for r in read_report(path, args.somar_np_nb)]
-    result = merge_dataset(json.loads(original), incoming, [p.name for p in args.files])
-    target.write_text("/* GERADO AUTOMATICAMENTE pelos importadores de boletins. */\nwindow.SCHOOL_DATA = " +
-                      json.dumps(result, ensure_ascii=False) + ";\n", encoding="utf-8")
-    with (ROOT / "data/boletins.csv").open("w", encoding="utf-8-sig", newline="") as stream:
-        writer = csv.DictWriter(stream, fieldnames=FIELDS)
-        writer.writeheader()
-        for record in result["registros"]:
-            writer.writerow({**record, "avaliacoes_origem": json.dumps(record.get("avaliacoes_origem", {}), ensure_ascii=False)})
+    result = merge_dataset(read_dataset(), incoming, [p.name for p in args.files])
+    write_dataset(result)
     for turma in sorted({r["turma"] for r in incoming}):
         print(f"{turma}: {len({r['ra'] for r in incoming if r['turma'] == turma})} alunos")
     print(f"Total: {result['meta']['total_alunos']} alunos; {result['meta']['total_registros']} registros")

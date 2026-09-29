@@ -277,6 +277,7 @@ ul, ol { padding-left: 18px; }
   transition: transform .15s ease;
 }
 .dd-btn:hover { background: rgba(255, 255, 255, .82); }
+.dd-btn:disabled { opacity: .43; cursor: not-allowed; }
 .dd.aberto .dd-btn { background: #fff; border-color: rgba(124, 92, 240, .55); }
 .dd.aberto .dd-btn::after { transform: translateY(-25%) rotate(225deg); }
 .dd.ativo .dd-btn { border-color: rgba(124, 92, 240, .6); box-shadow: 0 0 0 3px rgba(124, 92, 240, .16); }
