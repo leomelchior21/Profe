@@ -62,6 +62,10 @@ async function run() {
   check(await page.locator('#f-ano option[value="7"]').count() === 1, 'seventh grade is available');
   await page.locator('#f-ano').selectOption('7');
   check(JSON.stringify(await page.locator('#f-turma option').evaluateAll(ops => ops.slice(1).map(o => o.value))) === '["7A","7B","7C"]', 'grade filter shows only seventh-grade classes');
+  const seventhSubjects = await page.locator('#f-disciplina option').allTextContents();
+  check(seventhSubjects.includes('Ciências') && !seventhSubjects.some(s => ['Física', 'Química', 'Biologia'].includes(s)), 'seventh grade offers science without ninth-grade subjects');
+  const seventhComparison = await page.locator('#coorte-mediana').textContent();
+  check(seventhComparison.includes('Ciências') && !['Física', 'Química', 'Biologia'].some(s => seventhComparison.includes(s)), 'seventh-grade comparison excludes unrelated subjects');
   for (const [turma, total] of [['7A', 29], ['7B', 31], ['7C', 30]]) {
     await page.locator('#f-turma').selectOption(turma);
     check(await page.locator('#f-aluno option').count() === total + 1, turma + ' student count');
@@ -220,6 +224,10 @@ async function run() {
   check(await page.locator('#f-aluno').inputValue() === classList[1], 'student arrows follow filtered class list');
   await page.locator('#f-aluno').selectOption(classList[classList.length - 1]);
   check(await page.locator('#aluno .student-switch-next').isDisabled(), 'last student has no next button');
+  await page.locator('#f-disciplina').selectOption({ label: 'Biologia' });
+  await page.locator('#f-ano').selectOption('7');
+  check(await page.locator('#f-disciplina').inputValue() === '', 'changing to seventh grade clears an incompatible subject');
+  check(await page.locator('#f-disciplina option').filter({ hasText: 'Biologia' }).count() === 0, 'ninth-grade subject removed after changing years');
   await page.locator('#f-ano').selectOption('');
   check(await page.locator('#selecionar-ano').isVisible(), 'removing year selection restores prompt');
   check(await page.locator('#aluno, #coorte-resumo').count() === 0, 'removing year selection clears student and cohort results');

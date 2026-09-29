@@ -211,8 +211,15 @@ window.Analytics = (function () {
       if (scope.ano) alunos = alunos.filter(function (a) { return String(a.ano) === String(scope.ano); });
       if (scope.turma) alunos = alunos.filter(function (a) { return a.turma === scope.turma; });
       var turmas = {}; alunos.forEach(function (a) { turmas[a.turma] = true; });
-      var materias = Object.keys(ix.materiasGlobais).sort(ordemMaterias).map(function (k) {
-        return { nome: k, rotulo: nomeExibicao(k), numerica: ix.materiasGlobais[k].numerica, semNota: materiaSemNota(k) };
+      var materiasDoEscopo = {};
+      alunos.forEach(function (a) {
+        a.recs.forEach(function (r) {
+          var m = materiasDoEscopo[r.materia] || (materiasDoEscopo[r.materia] = { numerica: false });
+          if (r.nota != null) m.numerica = true;
+        });
+      });
+      var materias = Object.keys(materiasDoEscopo).sort(ordemMaterias).map(function (k) {
+        return { nome: k, rotulo: nomeExibicao(k), numerica: materiasDoEscopo[k].numerica, semNota: materiaSemNota(k) };
       });
       return {
         anosLetivos: ix.anosLetivos,

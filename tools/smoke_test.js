@@ -45,6 +45,17 @@ console.log('Opções:', op.turmas.join(', '), '| alunos:', op.alunos.length, '|
 check('197 alunos indexados', A.Store.alunosDoEscopo({}).length === 197, String(A.Store.alunosDoEscopo({}).length));
 check('107 alunos dos nonos atualizados', A.Store.alunosDoEscopo({ ano: '9' }).length === 107);
 check('turmas dos sétimos disponíveis', JSON.stringify(A.Store.opcoes({ ano: '7' }).turmas) === '["7A","7B","7C"]');
+const ninthScience = ['Física', 'Química', 'Biologia'].map(A.norm);
+for (const scope of [{ ano: '7' }, { turma: '7A' }, { turma: '7B' }, { turma: '7C' }]) {
+  const subjects = A.Store.opcoes(scope).materiasNumericas.map(m => A.norm(m.nome));
+  check('sétimos têm Ciências e oito disciplinas numéricas: ' + JSON.stringify(scope), subjects.length === 8 && subjects.includes(A.norm('Ciências')));
+  check('sétimos não incluem disciplinas dos nonos: ' + JSON.stringify(scope), subjects.every(m => !ninthScience.includes(m)));
+}
+const ninthSubjects = A.Store.opcoes({ ano: '9' }).materiasNumericas.map(m => A.norm(m.nome));
+check('nonos mantêm Física, Química e Biologia', ninthScience.every(m => ninthSubjects.includes(m)) && !ninthSubjects.includes(A.norm('Ciências')));
+const seventhMedians = A.Store.cohortSubjectMedians({ ano: '7' }, null);
+check('comparação por disciplina dos sétimos contém somente sua grade', seventhMedians.rows.length === 8 && seventhMedians.rows.every(r => !ninthScience.includes(A.norm(r.materia))));
+check('escopo sem alunos não oferece disciplinas de outros anos', A.Store.opcoes({ turma: 'inexistente' }).materias.length === 0);
 for (const [turma, total] of [['7A', 29], ['7B', 31], ['7C', 30], ['9A', 26], ['9B', 30], ['9C', 24], ['9D', 27]]) {
   check(turma + ': ' + total + ' alunos', A.Store.alunosDoEscopo({ turma }).length === total);
 }
