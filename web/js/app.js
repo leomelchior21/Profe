@@ -592,6 +592,10 @@
   /* -------------------------------------------------------------- eventos */
 
   function bind() {
+    var header = document.querySelector('.topbar');
+    function atualizarHeader() { header.classList.toggle('is-scrolled', window.scrollY > 12); }
+    window.addEventListener('scroll', atualizarHeader, { passive: true });
+    atualizarHeader();
     ['f-ano-letivo', 'f-ano', 'f-turma'].forEach(function (id) {
       $(id).addEventListener('change', function () {
         state.filtros.anoLetivo = $('f-ano-letivo').value;

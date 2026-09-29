@@ -53,6 +53,13 @@ async function run() {
   check(await page.locator('.cohort-comparison > #coorte-mediana + #coorte-distribuicao').count() === 1, 'cohort charts share one card');
   check(await page.locator('#coorte-distribuicao .cohort-dist-row').count() > 0, 'distribution rows visible');
   check(await page.locator('#btn-logout').getAttribute('aria-label') === 'Sair do painel', 'logout icon labelled');
+  check(await page.locator('.topbar').evaluate(el => getComputedStyle(el).backgroundColor === 'rgba(0, 0, 0, 0)'), 'header reveals page gradient at top');
+  await page.evaluate(() => window.scrollTo(0, 320));
+  await page.waitForFunction(() => document.querySelector('.topbar').classList.contains('is-scrolled'));
+  check(await page.locator('.topbar').evaluate(el => getComputedStyle(el).backdropFilter !== 'none'), 'header glass appears on scroll');
+  await page.screenshot({ path: path.join(out, 'header-glass-desktop.png') });
+  await page.evaluate(() => window.scrollTo(0, 0));
+  await page.waitForFunction(() => !document.querySelector('.topbar').classList.contains('is-scrolled'));
   await page.screenshot({ path: path.join(out, 'cohort-desktop.png'), fullPage: true });
   const student = await page.locator('#f-aluno option').nth(1).getAttribute('value');
   for (const width of [1440, 1024, 768, 390, 320]) {
@@ -62,7 +69,14 @@ async function run() {
     const columns = await page.locator('.cohort-comparison').evaluate(el => getComputedStyle(el).gridTemplateColumns.split(' ').length);
     check(columns === (width > 980 ? 2 : 1), 'cohort comparison columns at ' + width);
     await fit(page, 'cohort ' + width);
-    if (width === 390) await page.screenshot({ path: path.join(out, 'cohort-mobile.png'), fullPage: true });
+    if (width === 390) {
+      await page.evaluate(() => window.scrollTo(0, 0));
+      await page.screenshot({ path: path.join(out, 'cohort-mobile.png'), fullPage: true });
+      await page.evaluate(() => window.scrollTo(0, 320));
+      await page.waitForFunction(() => document.querySelector('.topbar').classList.contains('is-scrolled'));
+      await page.screenshot({ path: path.join(out, 'header-glass-mobile.png') });
+      await page.evaluate(() => window.scrollTo(0, 0));
+    }
     await page.locator('#f-aluno').selectOption(student);
     for (const id of studentSections) check(await page.locator('#' + id).count() === 1, 'student section ' + id);
     await fit(page, 'student ' + width);
