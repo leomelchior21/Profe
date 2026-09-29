@@ -113,8 +113,35 @@ window.Views = (function () {
     sec.id = 'aluno';
     sec.setAttribute('data-secao', 'aluno');
 
+    var alunos = A.Store.opcoes(ctx.scope).alunos;
+    var posicao = alunos.findIndex(function (a) { return a.ra === sd.aluno.ra; });
+    var anterior = posicao > 0 ? alunos[posicao - 1] : null;
+    var proximo = posicao >= 0 && posicao < alunos.length - 1 ? alunos[posicao + 1] : null;
+    var grid = document.createElement('div');
+    grid.className = 'student-head-grid';
+    function botaoNavegacao(aluno, direcao) {
+      var btn = document.createElement('button');
+      btn.type = 'button';
+      btn.className = 'student-switch student-switch-' + direcao;
+      btn.disabled = !aluno;
+      btn.setAttribute('aria-label', aluno ? (direcao === 'prev' ? 'Aluno anterior: ' : 'Próximo aluno: ') + aluno.nome :
+        (direcao === 'prev' ? 'Não há aluno anterior' : 'Não há próximo aluno'));
+      btn.title = btn.getAttribute('aria-label');
+      btn.innerHTML = '<svg viewBox="0 0 24 24" aria-hidden="true" focusable="false"><path d="M15 18l-6-6 6-6"/></svg>' +
+        '<span>' + (direcao === 'prev' ? 'Anterior' : 'Próximo') + '</span>';
+      if (aluno) btn.addEventListener('click', function () { ctx.onNavegarAluno(aluno.ra); });
+      return btn;
+    }
+    grid.appendChild(botaoNavegacao(anterior, 'prev'));
+
     var top = document.createElement('div');
     top.className = 'student-head-main';
+    if (posicao >= 0) {
+      var indice = document.createElement('span');
+      indice.className = 'student-position';
+      indice.textContent = 'Aluno ' + (posicao + 1) + ' de ' + alunos.length;
+      top.appendChild(indice);
+    }
     var h1 = document.createElement('h1');
     h1.className = 'page-title';
     h1.textContent = sd.aluno.nome;
@@ -129,22 +156,26 @@ window.Views = (function () {
     if (sd.aluno.status) partes.push(sd.aluno.status);
     meta.textContent = partes.join(' · ');
     top.appendChild(meta);
-    sec.appendChild(top);
 
     var facts = document.createElement('div');
     facts.className = 'student-facts';
     var f = [];
-    f.push(['Disciplinas com nota', String(sd.numericas.length)]);
-    if (sd.frequenciaMedia != null) f.push(['Frequência média registrada', pct(sd.frequenciaMedia)]);
-    f.push(['Eventos de recuperação', String(sd.recuperacoes.length)]);
-    if (sd.faltasTotais != null) f.push(['Faltas registradas (soma por disciplina)', String(sd.faltasTotais).replace('.', ',')]);
+    f.push(['Disciplinas', String(sd.numericas.length), 'Disciplinas com nota']);
+    if (sd.frequenciaMedia != null) f.push(['Frequência média', pct(sd.frequenciaMedia), 'Frequência média registrada']);
+    f.push(['Recuperações', String(sd.recuperacoes.length), 'Eventos de recuperação']);
+    if (sd.faltasTotais != null) f.push(['Faltas', String(sd.faltasTotais).replace('.', ','), 'Faltas registradas, soma por disciplina']);
     f.forEach(function (p) {
       var c = document.createElement('span');
       c.className = 'fact';
       c.innerHTML = '<b>' + esc(p[1]) + '</b><span>' + esc(p[0]) + '</span>';
+      c.setAttribute('aria-label', p[2] + ': ' + p[1]);
+      c.title = p[2];
       facts.appendChild(c);
     });
-    sec.appendChild(facts);
+    top.appendChild(facts);
+    grid.appendChild(top);
+    grid.appendChild(botaoNavegacao(proximo, 'next'));
+    sec.appendChild(grid);
 
     if (sd.aluno.status === 'Transferido') {
       sec.appendChild(C.aviso('Situação registrada no boletim: ' + sd.aluno.status + '. Os períodos disponíveis podem ser parciais.', 'aviso-neutro'));

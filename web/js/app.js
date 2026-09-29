@@ -222,6 +222,7 @@
       filtros: { disciplina: meeting ? '' : state.filtros.disciplina, bimestre: meeting ? '' : state.filtros.bimestre },
       state: state, meeting: !!meeting,
       rerender: function () { render(); },
+      onNavegarAluno: selecionarAluno,
       onFiltrarDisciplina: function (nome) {
         var sel = $('f-disciplina');
         sel.value = (state.filtros.disciplina && A.norm(state.filtros.disciplina) === A.norm(nome)) ? '' : nome;
@@ -286,6 +287,16 @@
       }, { rootMargin: '-140px 0px -65% 0px', threshold: 0 });
       document.querySelectorAll('[data-secao]').forEach(function (section) { observerAbas.observe(section); });
     }
+  }
+
+  function selecionarAluno(ra) {
+    if (!ra || ra === state.filtros.aluno) return;
+    state.filtros.aluno = ra;
+    state.traj = {};
+    refrescarFiltros();
+    render();
+    if (state.meeting) renderMeetingPasso();
+    else window.scrollTo({ top: 0, behavior: 'smooth' });
   }
 
   function renderCohort(view) {

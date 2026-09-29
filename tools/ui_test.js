@@ -57,6 +57,7 @@ async function run() {
   check(await page.locator('.cohort-comparison > #coorte-mediana + #coorte-distribuicao').count() === 1, 'cohort charts share one card');
   check(await page.locator('#coorte-distribuicao .cohort-dist-row').count() > 0, 'distribution rows visible');
   check(await page.locator('#btn-logout').getAttribute('aria-label') === 'Sair do painel', 'logout icon labelled');
+  check(await page.locator('.brand-mark').count() === 3 && await page.locator('.brand-mark').first().locator('path').count() === 2, 'new book logo appears in login, panel, and meeting');
   check(await page.locator('.topbar').evaluate(el => getComputedStyle(el).backgroundColor === 'rgba(0, 0, 0, 0)'), 'header reveals page gradient at top');
   await page.evaluate(() => window.scrollTo(0, 320));
   await page.waitForFunction(() => document.querySelector('.topbar').classList.contains('is-scrolled'));
@@ -84,6 +85,18 @@ async function run() {
     }
     await page.locator('#f-aluno').selectOption(student);
     for (const id of studentSections) check(await page.locator('#' + id).count() === 1, 'student section ' + id);
+    check(await page.locator('#aluno .student-head-main').evaluate(el => {
+      const a = el.getBoundingClientRect(), b = el.closest('.student-head').getBoundingClientRect();
+      return Math.abs((a.left + a.right - b.left - b.right) / 2) < 2;
+    }), 'student identity centered at ' + width);
+    check(await page.locator('#aluno .student-facts .fact').count() >= 3, 'student quick facts grouped below identity');
+    check(await page.locator('#aluno .student-switch-prev').isDisabled(), 'first student has no previous button');
+    const nextStudent = await page.locator('#f-aluno option').nth(2).getAttribute('value');
+    await page.locator('#aluno .student-switch-next').click();
+    check(await page.locator('#f-aluno').inputValue() === nextStudent, 'next button updates student filter');
+    check(await page.locator('#aluno h1').textContent() === (await page.locator('#f-aluno option:checked').textContent()).split('  ·  ')[0], 'next student identity shown');
+    await page.locator('#aluno .student-switch-prev').click();
+    check(await page.locator('#f-aluno').inputValue() === student, 'previous button restores student');
     check(await page.locator('#resumo .grade-segmented-bar').count() === 1, 'single segmented distribution bar');
     check(await page.locator('#resumo .grade-segmented-legend .grade-segment-key').count() === 3, 'distribution legend shows three ranges');
     if (width === 1440) {
@@ -97,6 +110,7 @@ async function run() {
     check(await page.locator('#disciplinas-tabela .discipline-swatch').count() > 0 && await page.locator('#disciplinas-tabela .avatar-materia').count() === 0, 'discipline names use legible color markers');
     await fit(page, 'student ' + width);
     if (width === 390 || width === 1440) {
+      await page.locator('#aluno').screenshot({ path: path.join(out, 'student-header-' + width + '.png') });
       await page.locator('#resumo .kpi-hero').screenshot({ path: path.join(out, 'student-distribution-' + width + '.png') });
       await page.locator('#disciplinas-tabela').screenshot({ path: path.join(out, 'student-disciplines-' + width + '.png') });
     }
@@ -106,6 +120,11 @@ async function run() {
     for (let i = 0; i < 8; i++) {
       check(await page.locator('#meeting-body > *').count() > 0, 'meeting step has content');
       if (i === 0) {
+        await page.locator('#meeting-body #aluno .student-switch-next').click();
+        check(await page.locator('#f-aluno').inputValue() === nextStudent, 'meeting next student keeps filter synchronized');
+        check((await page.locator('#meeting-body #aluno h1').textContent()) === (await page.locator('#f-aluno option:checked').textContent()).split('  ·  ')[0], 'meeting updates student identity');
+        await page.locator('#meeting-body #aluno .student-switch-prev').click();
+        check(await page.locator('#f-aluno').inputValue() === student, 'meeting previous student restores selection');
         check(await page.locator('#meeting-body #resumo .grade-segmented-bar').count() === 1, 'meeting overview uses the same segmented bar');
         if (width === 390 || width === 1440) await page.screenshot({ path: path.join(out, 'meeting-overview-' + width + '.png') });
       }
@@ -142,6 +161,13 @@ async function run() {
   await page.locator('#btn-limpar').click();
   const all = await page.locator('#f-aluno option').evaluateAll(ops => ops.slice(1).map(o => o.value));
   for (const ra of [...all.slice(0, 3), all[all.length - 1]]) { await page.locator('#f-aluno').selectOption(ra); check(await page.locator('#aluno h1').count() === 1, 'student renders'); }
+  await page.locator('#f-turma').selectOption('9B');
+  const classList = await page.locator('#f-aluno option').evaluateAll(ops => ops.slice(1).map(o => o.value));
+  await page.locator('#f-aluno').selectOption(classList[0]);
+  await page.locator('#aluno .student-switch-next').click();
+  check(await page.locator('#f-aluno').inputValue() === classList[1], 'student arrows follow filtered class list');
+  await page.locator('#f-aluno').selectOption(classList[classList.length - 1]);
+  check(await page.locator('#aluno .student-switch-next').isDisabled(), 'last student has no next button');
   await page.locator('#btn-logout').click();
   await page.locator('#auth-wall').waitFor({ state: 'visible' });
   check(await page.evaluate(() => !window.SCHOOL_DATA), 'lock clears memory');
