@@ -1,4 +1,29 @@
 /* Ajustes discretos sobre o visual original. */
+.attention-grid { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 20px; }
+.attention-card { min-width: 0; padding: 20px; border: 1px solid #e2e5ed; border-radius: 18px; background: #f8fafc; }
+.attention-title { margin: 0 0 6px; font-size: 18px; color: var(--tinta); }
+.attention-desc, .attention-count { margin: 0 0 14px; color: var(--tinta-3); font-size: 12px; }
+.attention-control { display: grid; gap: 6px; margin: 16px 0 12px; font-size: 12px; font-weight: 700; }
+.attention-control select { width: 100%; min-width: 0; min-height: 42px; padding: 8px 12px; border: 1px solid #d4dbea; border-radius: 10px; background: #fff; color: var(--tinta); font: inherit; }
+.attention-list { list-style: none; padding: 0; margin: 0; max-height: 470px; overflow-y: auto; overscroll-behavior: contain; scrollbar-width: thin; }
+.attention-list li + li { border-top: 1px solid #e4e9f0; }
+.attention-student { display: flex; gap: 10px; align-items: center; width: 100%; padding: 13px 3px; border: 0; background: transparent; text-align: left; color: var(--tinta); font: inherit; cursor: pointer; }
+.attention-student:hover { background: #eef0fa; }
+.attention-student:focus-visible { outline: 2px solid #7252c7; outline-offset: -2px; border-radius: 8px; }
+.attention-position { flex: 0 0 22px; color: #8993a6; font-size: 11px; font-weight: 800; font-variant-numeric: tabular-nums; }
+.attention-identity { min-width: 0; flex: 1; display: grid; gap: 5px; }
+.attention-identity strong { font-size: 12px; line-height: 1.4; overflow-wrap: anywhere; }
+.attention-identity small, .attention-value small { color: var(--tinta-3); font-size: 10px; line-height: 1.5; }
+.attention-value { flex: 0 0 auto; display: grid; gap: 1px; text-align: right; font-variant-numeric: tabular-nums; }
+.attention-value strong { font-size: 20px; color: #5d4698; }
+.attention-value .up { color: #246b42; }
+.attention-value .down { color: #ae3544; }
+.attention-method { margin-top: 18px; line-height: 1.6; }
+@media (max-width: 800px) {
+  .attention-grid { grid-template-columns: minmax(0, 1fr); }
+  .attention-card { padding: 14px; }
+  .attention-student { gap: 7px; }
+}
 [hidden] { display: none !important; }
 .skip-link { position: fixed; top: 10px; left: 10px; z-index: 300; background: #fff; padding: 10px; transform: translateY(-160%); }
 .skip-link:focus { transform: none; }

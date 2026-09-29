@@ -19,6 +19,10 @@ A senha de acesso é a definida para a escola. Ela desbloqueia o dataset criptog
 
 O painel pede a seleção de um ano escolar antes de mostrar resultados. Após a escolha, mantém todas as análises em uma página contínua; os botões no rodapé levam às seções. Sem aluno selecionado, mostra as turmas daquele ano. Limpar os filtros ou retirar o ano selecionado volta à tela de seleção. O modo reunião e o resumo impresso mostram o percurso anual do estudante.
 
+Antes de **Como ler este modo**, **Merecem atenção** mostra quatro listas de até 20 alunos: maiores médias, menores médias, menores oscilações e maiores oscilações. As duas listas de médias têm seletores independentes de média geral, Ciências exatas, Ciências humanas e Linguagens. Ciências exatas reúne Matemática e as disciplinas de Ciências da Natureza disponíveis naquele ano. Os rankings respeitam ano, turma e disciplina; os de médias também respeitam o bimestre em foco.
+
+A oscilação é o desvio-padrão das médias de todos os bimestres com MB, exigindo pelo menos dois e mantendo as mesmas disciplinas em cada período. As setas mostram a diferença entre a primeira e a última média; os filtros permitem ver subidas, quedas ou nenhuma mudança final. Uma trajetória que sobe e depois cai continua tendo oscilação mesmo quando termina no valor inicial. MB ausente não vira zero; empates são ordenados pelo nome. Clicar em um aluno abre seu percurso.
+
 Média individual e mediana da turma são medidas distintas. As sugestões são baseadas em regras descritivas, sem inferências sobre comportamento ou causas. Lacunas não são convertidas em zero. A configuração da escola e os critérios ficam em `web/js/config.js`.
 
 ## Atualizar os boletins
@@ -60,11 +64,14 @@ Faltas, frequência e situação de matrícula são preservadas dos boletins ant
 
 O build copia o módulo do pacote `@vercel/analytics` para `web/js/vendor/`. Em produção, ele registra visitas à página; nomes e notas de alunos não são incluídos na URL. Para receber os eventos, ative **Web Analytics** no projeto da Vercel e publique uma nova implantação. Em localhost, a coleta fica desligada.
 
+O build também coloca uma versão calculada pelo conteúdo nas URLs de CSS e JavaScript, para carregar os arquivos atualizados ao abrir ou recarregar uma nova publicação.
+
 ## Verificar
 
 `npm install` instala as dependências de teste e o pacote do Vercel Analytics usado pelo build.
 
 - `node tools/smoke_test.js`: cálculos, lacunas, recuperação, turmas e insights. Sem os arquivos privados locais, defina `PANEL_PASSWORD` para testar o pacote criptografado.
+- `node tools/ranking_test.js`: rankings com dados fictícios, filtros, áreas, empates, zeros, lacunas e oscilação entre todos os bimestres.
 - `python -B tools/test_import_notas_csv.py`: importação CSV com dados fictícios, MB ausente, zeros, acentos, preservação das outras turmas e reimportação sem duplicatas.
 - `python -B tools/test_import_notas_pdf.py`: importação PDF com dados fictícios, notas atualizadas, MB ausente, números quebrados em linhas e preservação da frequência com sua origem.
 - Defina `$env:PANEL_PASSWORD` e execute `npm test`: testes analíticos e de navegador. Se necessário, execute `npx playwright install chromium` antes.

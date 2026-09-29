@@ -476,6 +476,61 @@ window.Analytics = (function () {
       return resumo;
     },
 
+    /* Listas individuais: médias por disciplina e oscilação entre bimestres. */
+    attentionRanking: function (scope, opts) {
+      opts = opts || {};
+      var tipo = opts.tipo || 'maiores';
+      var oscilacao = tipo === 'estaveis' || tipo === 'oscilantes';
+      var area = CFG.rankingAreas.filter(function (a) { return a.id === (opts.area || 'geral'); })[0];
+      if (!area) return { alunos: [], total: 0 };
+      var nomes = area.disciplinas && area.disciplinas.map(norm);
+      var alunos = Store.alunosDoEscopo(scope).map(function (aluno) {
+        var materias = Store.studentData(aluno.ra, scope).materias.filter(function (m) {
+          return !m.semNota && (!nomes || nomes.indexOf(norm(m.nome)) >= 0) &&
+            (!opts.materia || norm(m.nome) === norm(opts.materia));
+        });
+        var entrada = { ra: aluno.ra, nome: aluno.nome, turma: aluno.turma };
+        if (!oscilacao) {
+          var medias = materias.map(function (m) {
+            return Stats.mean(m.serie.filter(function (s) { return !opts.bimestre || s.bimestre === Number(opts.bimestre); })
+              .map(function (s) { return s.mb; }));
+          }).filter(function (v) { return v != null; });
+          if (!medias.length) return null;
+          entrada.media = Stats.mean(medias);
+          entrada.disciplinas = medias.length;
+        } else {
+          var periodos = {};
+          materias.forEach(function (m) { m.serie.forEach(function (s) { if (s.mb != null) periodos[s.bimestre] = true; }); });
+          var bimestres = Object.keys(periodos).map(Number).sort(function (a, b) { return a - b; });
+          if (bimestres.length < 2) return null;
+          var comuns = materias.filter(function (m) {
+            return bimestres.every(function (bi) { return m.serie.some(function (s) { return s.bimestre === bi && s.mb != null; }); });
+          });
+          if (!comuns.length) return null;
+          entrada.serie = bimestres.map(function (bi) {
+            return { bimestre: bi, media: Stats.mean(comuns.map(function (m) {
+              return m.serie.filter(function (s) { return s.bimestre === bi; })[0].mb;
+            })) };
+          });
+          entrada.oscilacao = Stats.sd(entrada.serie.map(function (s) { return s.media; }));
+          entrada.variacao = Stats.round2(entrada.serie[entrada.serie.length - 1].media - entrada.serie[0].media);
+          entrada.disciplinas = comuns.length;
+          if (opts.direcao === 'subiu' && entrada.variacao <= 0) return null;
+          if (opts.direcao === 'caiu' && entrada.variacao >= 0) return null;
+          if (opts.direcao === 'estavel' && entrada.variacao !== 0) return null;
+        }
+        return entrada;
+      }).filter(function (a) { return a != null; });
+      var campo = oscilacao ? 'oscilacao' : 'media';
+      var ordem = tipo === 'maiores' || tipo === 'oscilantes' ? -1 : 1;
+      alunos.sort(function (a, b) {
+        var diferenca = a[campo] - b[campo];
+        return (Math.abs(diferenca) > 1e-9 ? ordem * diferenca : 0) ||
+          a.nome.localeCompare(b.nome, 'pt-BR') || a.ra.localeCompare(b.ra);
+      });
+      return { alunos: alunos.slice(0, 20), total: alunos.length };
+    },
+
     /* mediana por disciplina e turma: rows = disciplinas, cols = turmas */
     cohortSubjectMedians: function (scope, bimestre) {
       var turmas = Store.opcoes(scope).turmas;
@@ -500,7 +555,9 @@ window.Analytics = (function () {
           })
         };
       });
-      return { turmas: turmas, rows: rows };
+      return { turmas: turmas, rows: rows.filter(function (r) {
+        return r.valores.some(function (v) { return v.n > 0; });
+      }) };
     },
 
     /* evolução da mediana das médias de cada turma por bimestre */

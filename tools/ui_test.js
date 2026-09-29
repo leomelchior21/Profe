@@ -8,7 +8,7 @@ const root = path.resolve(__dirname, '..');
 const out = path.join(root, 'artifacts');
 fs.mkdirSync(out, { recursive: true });
 const studentSections = ['aluno', 'resumo', 'disciplinas-tabela', 'leitura', 'trajetoria', 'contexto', 'padroes', 'detalhados'];
-const cohortSections = ['coorte-resumo', 'coorte-tabela', 'coorte-evolucao', 'coorte-mediana', 'coorte-distribuicao', 'coorte-notas'];
+const cohortSections = ['coorte-resumo', 'coorte-tabela', 'coorte-evolucao', 'coorte-mediana', 'coorte-distribuicao', 'coorte-atencao', 'coorte-notas'];
 const password = process.env.PANEL_PASSWORD;
 if (!password) throw new Error('Defina PANEL_PASSWORD para testar o acesso.');
 const port = 4174;
@@ -66,6 +66,28 @@ async function run() {
   check(seventhSubjects.includes('Ciências') && !seventhSubjects.some(s => ['Física', 'Química', 'Biologia'].includes(s)), 'seventh grade offers science without ninth-grade subjects');
   const seventhComparison = await page.locator('#coorte-mediana').textContent();
   check(seventhComparison.includes('Ciências') && !['Física', 'Química', 'Biologia'].some(s => seventhComparison.includes(s)), 'seventh-grade comparison excludes unrelated subjects');
+  check(await page.locator('#coorte-atencao + #coorte-notas').count() === 1, 'attention rankings appear immediately before guidance');
+  check(await page.locator('#coorte-atencao .attention-card').count() === 4, 'four attention lists');
+  for (const id of ['maiores', 'menores', 'estaveis', 'oscilantes']) {
+    check(await page.locator('.attention-' + id + ' .attention-student').count() === 20, id + ' shows top 20');
+  }
+  await page.locator('#attention-filter-maiores').selectOption('exatas');
+  check(await page.locator('#attention-filter-menores').inputValue() === 'geral', 'ranking area selectors are independent');
+  await page.locator('#attention-filter-menores').selectOption('humanas');
+  const highestScores = await page.locator('.attention-maiores .attention-value > strong').allTextContents();
+  check(highestScores.every((value, i) => i === 0 || Number(value.replace(',', '.')) <= Number(highestScores[i - 1].replace(',', '.'))), 'highest grades are sorted descending');
+  const lowestScores = await page.locator('.attention-menores .attention-value > strong').allTextContents();
+  check(lowestScores.every((value, i) => i === 0 || Number(value.replace(',', '.')) >= Number(lowestScores[i - 1].replace(',', '.'))), 'lowest grades are sorted ascending');
+  await page.locator('#attention-filter-oscilantes').selectOption('caiu');
+  check(await page.locator('.attention-oscilantes .attention-student').count() > 0 && await page.locator('.attention-oscilantes .attention-delta:not(.down)').count() === 0, 'oscillation direction filter shows only declines');
+  const rankedStudent = await page.locator('.attention-maiores .attention-student').first().getAttribute('data-ra');
+  await page.locator('.attention-maiores .attention-student').first().click();
+  check(await page.locator('#f-aluno').inputValue() === rankedStudent, 'ranking entry opens the selected student');
+  await page.locator('#f-aluno').selectOption('');
+  check(await page.locator('#attention-filter-maiores').inputValue() === 'exatas', 'ranking preferences survive student navigation');
+  await page.locator('#attention-filter-maiores').selectOption('geral');
+  await page.locator('#attention-filter-menores').selectOption('geral');
+  await page.locator('#attention-filter-oscilantes').selectOption('todas');
   for (const [turma, total] of [['7A', 29], ['7B', 31], ['7C', 30]]) {
     await page.locator('#f-turma').selectOption(turma);
     check(await page.locator('#f-aluno option').count() === total + 1, turma + ' student count');
@@ -207,6 +229,10 @@ async function run() {
   await page.locator('#btn-limpar').click();
   await page.locator('#f-ano').selectOption('9');
   check(await page.locator('#coorte-resumo .accent .kpi-turma-badge').count() === 4, 'ninth grade shows its four classes');
+  const ninthLabels = await page.locator('#coorte-mediana tbody th').allTextContents();
+  check(ninthLabels.length === 10 && !ninthLabels.includes('Ciências') && ['Física', 'Química', 'Biologia'].every(subject => ninthLabels.includes(subject)), 'ninth-grade median chart with all students excludes science');
+  await page.locator('#coorte-mediana').screenshot({ path: path.join(out, 'ninth-grade-subject-medians.png') });
+  await page.locator('#coorte-atencao').screenshot({ path: path.join(out, 'ninth-grade-attention.png') });
   check(await page.locator('#f-aluno option').count() === 108, 'updated ninth grade has 107 students');
   for (const [turma, total] of [['9A', 26], ['9B', 30], ['9C', 24], ['9D', 27]]) {
     await page.locator('#f-turma').selectOption(turma);

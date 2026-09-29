@@ -6,7 +6,7 @@
     "prestart": "npm run build",
     "start": "node tools/serve.js",
     "pretest": "npm run build",
-    "test": "node tools/smoke_test.js && node tools/ui_test.js",
+    "test": "node tools/ranking_test.js && node tools/smoke_test.js && node tools/ui_test.js",
     "protect": "node tools/protect_data.js"
   },
   "devDependencies": {

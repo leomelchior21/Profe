@@ -66,6 +66,13 @@ window.CONFIG = {
     }
   ],
 
+  rankingAreas: [
+    { id: 'geral', nome: 'Média geral', disciplinas: null },
+    { id: 'exatas', nome: 'Ciências exatas', disciplinas: ['Matemática', 'Ciências', 'Física', 'Química', 'Biologia'] },
+    { id: 'humanas', nome: 'Ciências humanas', disciplinas: ['História', 'Geografia'] },
+    { id: 'linguagens', nome: 'Linguagens', disciplinas: ['Língua Portuguesa', 'Produção de Texto', 'Inglês', 'Espanhol'] }
+  ],
+
   /* Disciplinas avaliadas sem nota numérica (aparecem como chips informativos,
      nunca como barras/linhas numéricas). Comparadas sem acentos. */
   disciplinasSemNota: [

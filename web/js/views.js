@@ -1768,17 +1768,109 @@ window.Views = (function () {
     return sec.el;
   }
 
+  function cohortAttention(ctx) {
+    var sec = C.secao('coorte-atencao', 'Merecem atenção',
+      'Quatro listas para acompanhar os alunos do ano e das turmas selecionadas. Toque em um nome para abrir seu percurso.',
+      { ajuda: 'As médias usam somente MB e respeitam os filtros de disciplina e bimestre. A oscilação usa todos os bimestres com MB, comparando as mesmas disciplinas em cada período. Empates são ordenados alfabeticamente.' });
+    var escolhas = ctx.state.atencao || (ctx.state.atencao = {});
+    var grid = C.el('div', 'attention-grid');
+    var definicoes = [
+      { id: 'maiores', titulo: '20 maiores médias', descricao: 'Maiores médias na área escolhida.', area: true },
+      { id: 'menores', titulo: '20 menores médias', descricao: 'Menores médias na área escolhida.', area: true },
+      { id: 'estaveis', titulo: '20 menores oscilações', descricao: 'Médias bimestrais mais próximas entre si.' },
+      { id: 'oscilantes', titulo: '20 maiores oscilações', descricao: 'Médias bimestrais com maior variação.' }
+    ];
+    function numero(v) { return v.toLocaleString('pt-BR', { minimumFractionDigits: 2, maximumFractionDigits: 2 }); }
+    definicoes.forEach(function (def) {
+      var card = C.el('article', 'attention-card attention-' + def.id);
+      var heading = C.el('h3', 'attention-title', esc(def.titulo));
+      heading.id = 'attention-title-' + def.id;
+      card.setAttribute('aria-labelledby', heading.id);
+      card.appendChild(heading);
+      card.appendChild(C.el('p', 'attention-desc', esc(def.descricao)));
+      var label = C.el('label', 'attention-control');
+      label.htmlFor = 'attention-filter-' + def.id;
+      label.appendChild(C.el('span', '', def.area ? 'Área de comparação' : 'Do primeiro ao último bimestre'));
+      var select = C.el('select');
+      select.id = label.htmlFor;
+      select.setAttribute('aria-label', (def.area ? 'Área: ' : 'Direção: ') + def.titulo);
+      var options = def.area ? CFG.rankingAreas : [
+        { id: 'todas', nome: 'Todas as direções' }, { id: 'subiu', nome: 'Terminaram acima' },
+        { id: 'caiu', nome: 'Terminaram abaixo' }, { id: 'estavel', nome: 'Sem mudança final' }
+      ];
+      options.forEach(function (op) {
+        var option = C.el('option'); option.value = op.id; option.textContent = op.nome; select.appendChild(option);
+      });
+      select.value = escolhas[def.id] || options[0].id;
+      label.appendChild(select); card.appendChild(label);
+      var count = C.el('p', 'attention-count'); count.setAttribute('role', 'status'); card.appendChild(count);
+      var results = C.el('div', 'attention-results'); card.appendChild(results);
+      function atualizar() {
+        escolhas[def.id] = select.value;
+        var ranking = A.Store.attentionRanking(ctx.scope, {
+          tipo: def.id, area: def.area ? select.value : 'geral', direcao: def.area ? 'todas' : select.value,
+          materia: ctx.filtros.disciplina, bimestre: ctx.filtros.bimestre
+        });
+        count.textContent = ranking.alunos.length + ' de ' + ranking.total + ' alunos com dados';
+        results.innerHTML = '';
+        if (!ranking.alunos.length) {
+          results.appendChild(C.vazio(def.area ? 'Sem MB registrada neste recorte.' : 'Sem alunos com pelo menos dois bimestres comparáveis neste recorte.'));
+          return;
+        }
+        var list = C.el('ol', 'attention-list');
+        list.setAttribute('aria-label', def.titulo);
+        ranking.alunos.forEach(function (aluno, i) {
+          var item = C.el('li');
+          var button = C.el('button', 'attention-student'); button.type = 'button';
+          button.dataset.ra = aluno.ra;
+          button.setAttribute('aria-label', 'Abrir percurso de ' + aluno.nome + ', turma ' + aluno.turma);
+          button.appendChild(C.el('span', 'attention-position', String(i + 1).padStart(2, '0')));
+          var identity = C.el('span', 'attention-identity');
+          identity.appendChild(C.el('strong', '', esc(aluno.nome)));
+          identity.appendChild(C.el('small', '', 'Turma ' + esc(aluno.turma) + ' · ' + aluno.disciplinas + ' disciplinas'));
+          if (!def.area) {
+            identity.appendChild(C.el('small', 'attention-series', esc(aluno.serie.map(function (s) {
+              return rbc(s.bimestre) + ': ' + numero(s.media);
+            }).join(' · '))));
+          }
+          button.appendChild(identity);
+          var value = C.el('span', 'attention-value');
+          value.appendChild(C.el('strong', '', numero(def.area ? aluno.media : aluno.oscilacao)));
+          value.appendChild(C.el('small', '', def.area ? 'média' : 'desvio-padrão'));
+          if (!def.area) {
+            var direcao = aluno.variacao > 0 ? 'up' : aluno.variacao < 0 ? 'down' : 'flat';
+            var delta = (aluno.variacao > 0 ? '↑ +' : aluno.variacao < 0 ? '↓ −' : '↔ ') + numero(Math.abs(aluno.variacao));
+            value.appendChild(C.el('small', 'attention-delta ' + direcao, delta));
+          }
+          button.appendChild(value);
+          button.addEventListener('click', function () { ctx.onNavegarAluno(aluno.ra); });
+          item.appendChild(button); list.appendChild(item);
+        });
+        results.appendChild(list);
+      }
+      select.addEventListener('change', atualizar);
+      atualizar();
+      grid.appendChild(card);
+    });
+    sec.body.appendChild(grid);
+    sec.body.appendChild(C.el('p', 'hint attention-method',
+      'Oscilação: desvio-padrão das médias bimestrais, usando as mesmas disciplinas em todos os períodos disponíveis. ' +
+      'Considera todos os bimestres, mesmo quando há um bimestre em foco. As setas mostram a diferença entre a primeira e a última média. Empates: ordem alfabética.'));
+    return sec.el;
+  }
+
   function cohortNotas(ctx) {
     var sec = C.secao('coorte-notas', 'Como ler este modo',
-      'Este modo compara turmas, nunca alunos. Os nomes dos estudantes não aparecem em nenhuma distribuição, e não há ranking entre alunos.',
-      { ajuda: 'O modo turma compara grupos, nunca alunos: nenhum nome aparece nas distribuições e não existe ranking entre estudantes. As medianas resumem o padrão típico de cada turma e as caixas mostram a dispersão do grupo.' });
+      'Os gráficos resumem as turmas. As listas “Merecem atenção” mostram os alunos conforme a média ou a oscilação selecionada.',
+      { ajuda: 'As medianas resumem o padrão típico de cada turma e as caixas mostram a dispersão do grupo. As listas individuais usam somente as MB disponíveis e permitem abrir o percurso de cada aluno.' });
     var ul = document.createElement('ul');
     ul.className = 'monitor-list';
     [
       'As medianas mostram o padrão típico de cada turma — metade dos alunos fica acima, metade abaixo.',
       'As caixas mostram a dispersão: caixas longas indicam grupos mais heterogêneos.',
       'Diferenças entre turmas podem refletir composição da turma, momento do período e critérios de lançamento das notas.',
-      'Para investigar um aluno, selecione-o no filtro "Aluno" e o painel muda para o modo de reunião.'
+      'As listas usam somente MB registrada: uma nota ausente não vale zero. A oscilação exige ao menos dois bimestres comparáveis.',
+      'Para investigar um aluno, toque no nome nas listas ou selecione-o no filtro "Alunos".'
     ].forEach(function (t) {
       var li = document.createElement('li');
       li.innerHTML = C.icone('lista') + '<span>' + esc(t) + '</span>';
@@ -1885,7 +1977,7 @@ window.Views = (function () {
     consistencia: consistencia, recuperacao: recuperacao, areas: areas, smallMultiples: smallMultiples,
     padroes: padroes, proximos: proximos, detalhados: detalhados,
     cohortGuidance: cohortGuidance, cohortResumo: cohortResumo, cohortTabela: cohortTabela, cohortMediana: cohortMediana, cohortEvolucao: cohortEvolucao,
-    cohortDistribuicao: cohortDistribuicao, cohortNotas: cohortNotas, classData: classData,
+    cohortDistribuicao: cohortDistribuicao, cohortAttention: cohortAttention, cohortNotas: cohortNotas, classData: classData,
     blocoInsights: blocoInsights
   };
 })();

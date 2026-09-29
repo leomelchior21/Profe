@@ -332,6 +332,7 @@
     comparacao.appendChild(distribuicao[0]);
     view.appendChild(comparacao);
     if (distribuicao[1]) view.appendChild(distribuicao[1]);
+    view.appendChild(V.cohortAttention(ctx));
     view.appendChild(V.cohortNotas(ctx));
   }
 
