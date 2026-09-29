@@ -1,37 +1,41 @@
-# Profe
+# Profe · Painel de aprendizagem
 
-Painel de aprendizagem local-first para leitura pedagógica dos boletins da Escola Nova Lourenço Castanho.
+Painel local de leitura pedagógica dos boletins, com visão coletiva, acompanhamento individual, apresentação para famílias e resumo para impressão.
 
-O painel compara turmas (sem identificar alunos) e oferece um modo de reunião por aluno, com trajetória, perfil por disciplina, contexto da turma, recuperação e pontos de acompanhamento. Todo o processamento acontece no navegador: nenhum dado é enviado para servidores.
+## Abrir
 
-## Como rodar
+Com Node.js instalado, execute `npm start` e abra **http://127.0.0.1:4173**. O servidor publica somente a pasta `web/`. Também é possível hospedar essa pasta em um serviço estático com HTTPS.
 
-Abra `web/index.html` diretamente no navegador (não precisa de servidor) ou use qualquer servidor estático apontando para `web/`.
+A senha de acesso é a definida para a escola. Ela desbloqueia o dataset criptografado no navegador. Recarregar ou clicar em **Bloquear** encerra o acesso. Não há armazenamento da senha ou do dataset descriptografado em localStorage/sessionStorage.
 
-## Dados
+## Organização
 
-O painel lê `web/js/dados.js`, gerado a partir dos boletins em `source/` (arquivos PDF) pelo script `tools/extract_boletins.py`. Por conterem dados individuais de estudantes, `source/`, `data/` e `web/js/dados.js` não são versionados neste repositório.
+- **Visão geral:** síntese do recorte ou do estudante.
+- **Trajetória:** evolução por bimestre e por disciplina.
+- **Disciplinas:** tabela e perfil de notas.
+- **Contexto:** distribuição da turma e recuperações.
+- **Padrões:** variações, consistência e áreas curriculares.
+- **Dados:** registros e origem dos valores.
 
-Sem o `dados.js`, a página abre com um aviso pedindo a geração do dataset:
+O painel mantém todas as análises em uma página contínua; os botões no rodapé levam às seções. Sem aluno selecionado, mostra as turmas. O modo reunião e o resumo impresso mostram o percurso anual do estudante.
 
-```
-python tools/extract_boletins.py
-```
+Média individual e mediana da turma são medidas distintas. As sugestões são baseadas em regras descritivas, sem inferências sobre comportamento ou causas. Lacunas não são convertidas em zero. A configuração da escola e os critérios ficam em `web/js/config.js`.
 
-## Estrutura
+## Atualizar os boletins
 
-- `web/` — aplicação estática (HTML, CSS e JavaScript, sem dependências externas).
-  - `web/js/config.js` — único arquivo a editar para adaptar o painel à escola (nota de referência, áreas, limiares, rótulos).
-  - `web/js/analytics.js` — índice de dados, estatísticas e motor de observações.
-  - `web/js/charts.js` — gráficos em SVG.
-  - `web/js/views.js` — seções do painel (aluno, turma e reunião).
-  - `web/js/app.js` — estado, filtros, modos e relatório impresso.
-- `tools/` — extração dos boletins e testes (`node tools/smoke_test.js`, `tools/selftest.html`).
+1. Coloque os PDFs em `source/` e execute `python tools/extract_boletins.py` (requer PyMuPDF).
+2. O extrator produz `data/boletins.csv` e `data/dados.js`, ambos privados.
+3. No PowerShell, defina `$env:PANEL_PASSWORD` com a senha escolhida e execute `npm run protect`. Depois remova a variável com `Remove-Item Env:PANEL_PASSWORD`.
+4. Publique apenas `web/`. Nunca publique `data/`, `source/`, `tools/` ou `artifacts/`: contêm dados ou relatórios privados.
 
-## Testes
+O pacote público usa AES-256-GCM, com chave derivada por PBKDF2-SHA-256 (600.000 iterações), salt e IV aleatórios. A senha não está no JavaScript público. O acesso depende de Web Crypto (HTTPS, localhost ou navegador compatível com arquivos locais). A senha é compartilhada: não há contas individuais, revogação de sessões ou limite de tentativas no servidor. Quem já conhece a senha pode copiar os dados desbloqueados. Ao mudar a senha, gere novamente o pacote protegido.
 
-```
-node tools/smoke_test.js
-```
+## Verificar
 
-O autoteste de interface fica em `tools/selftest.html` (pode ser aberto no navegador ou rodado em Chrome headless).
+`npm install` instala apenas as dependências de teste; o site não depende delas.
+
+- `node tools/smoke_test.js`: cálculos, lacunas, recuperação, turmas e insights. Sem os arquivos privados locais, defina `PANEL_PASSWORD` para testar o pacote criptografado.
+- Defina `$env:PANEL_PASSWORD` e execute `npm test`: testes analíticos e de navegador. Se necessário, execute `npx playwright install chromium` antes.
+- Capturas e um PDF de validação são salvos em `artifacts/` (privados, ignorados pelo Git).
+
+Os testes de interface verificam as seções, cinco larguras de tela (320 a 1440 px), oito passos da reunião, filtros, impressão e bloqueio de acesso.

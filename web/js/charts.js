@@ -135,10 +135,25 @@ window.Charts = (function () {
       if (!host.__chartRender) return;
       var w = host.clientWidth;
       if (Math.abs(w - (host.__chartW || 0)) < 5) return;
-      host.__chartW = w;
-      host.__chartRender(w);
+      if (host.__chartFrame) cancelAnimationFrame(host.__chartFrame);
+      host.__chartFrame = requestAnimationFrame(function () {
+        host.__chartFrame = null;
+        if (!host.isConnected || !host.__chartRender) return;
+        host.__chartW = host.clientWidth;
+        host.__chartRender(host.__chartW);
+      });
     });
   }) : null;
+
+  function dispose(container) {
+    container.querySelectorAll('*').forEach(function (host) {
+      if (host.__chartRender) {
+        if (observer) observer.unobserve(host);
+        if (host.__chartFrame) cancelAnimationFrame(host.__chartFrame);
+        delete host.__chartRender;
+      }
+    });
+  }
 
   function mount(host, render) {
     host.__chartRender = render;
@@ -163,7 +178,7 @@ window.Charts = (function () {
   function renderLine(host, opts, width) {
     clear(host);
     var H = opts.altura || 300;
-    var ml = 42, mr = 18, mt = 14, mb = 30;
+    var ml = 42, mr = 18, mt = 30, mb = 30;
     var W = Math.max(280, width);
     var iw = W - ml - mr, ih = H - mt - mb;
     var svg = el('svg', { width: W, height: H, viewBox: '0 0 ' + W + ' ' + H, role: 'img' });
@@ -188,7 +203,7 @@ window.Charts = (function () {
     /* linha de referência */
     if (opts.refLine && opts.refLine.valor != null) {
       svg.appendChild(el('line', { x1: ml, y1: Y(opts.refLine.valor), x2: ml + iw, y2: Y(opts.refLine.valor), class: 'g-ref' }));
-      svg.appendChild(txt(ml + iw - 2, Y(opts.refLine.valor) - 6, opts.refLine.rotulo, { class: 'g-ref-label', 'text-anchor': 'end' }));
+      svg.appendChild(txt(ml + iw - 2, 12, 'Referência: ' + String(opts.refLine.valor).replace('.', ','), { class: 'g-ref-label', 'text-anchor': 'end' }));
     }
 
     /* séries */
@@ -222,7 +237,7 @@ window.Charts = (function () {
 
       function move(evt) {
         var rect = svg.getBoundingClientRect();
-        var mx = evt.clientX - rect.left;
+        var mx = (evt.clientX - rect.left) * W / rect.width;
         var idx = Math.min(n - 1, Math.max(0, Math.floor((mx - ml) / (iw / n))));
         guide.setAttribute('x1', X(idx)); guide.setAttribute('x2', X(idx)); guide.setAttribute('opacity', 1);
         clear(focus);
@@ -235,22 +250,23 @@ window.Charts = (function () {
         focus.setAttribute('opacity', 1);
         if (opts.tooltip) showTip(opts.tooltip(idx), evt.clientX, evt.clientY);
       }
-      overlay.addEventListener('mousemove', move);
+      overlay.addEventListener('pointermove', move);
+      overlay.addEventListener('click', move);
       overlay.addEventListener('mouseleave', function () { guide.setAttribute('opacity', 0); focus.setAttribute('opacity', 0); hideTip(); });
       host.__lineMove = move;
 
       /* teclado */
       host.setAttribute('tabindex', '0');
       var ki = -1;
-      host.addEventListener('keydown', function (e) {
+      host.onkeydown = function (e) {
         if (e.key !== 'ArrowRight' && e.key !== 'ArrowLeft') return;
         e.preventDefault();
         ki = Math.min(n - 1, Math.max(0, ki + (e.key === 'ArrowRight' ? 1 : -1)));
         var vb = svg.getBoundingClientRect();
         guide.setAttribute('x1', X(ki)); guide.setAttribute('x2', X(ki)); guide.setAttribute('opacity', 1);
         if (opts.tooltip) showTip(opts.tooltip(ki), vb.left + X(ki), vb.top + mt + 20);
-      });
-      host.addEventListener('blur', function () { hideTip(); });
+      };
+      host.onblur = hideTip;
     }
     host.appendChild(svg);
   }
@@ -303,11 +319,12 @@ window.Charts = (function () {
     mount(host, function (width) {
       clear(host);
       var itens = opts.itens;
-      var rowH = opts.rowH || 34;
-      var labelW = opts.labelW || 128;
-      var valW = 52;
+      var compact = width < 440;
+      var rowH = compact ? 66 : (opts.rowH || 38);
+      var labelW = compact ? 0 : Math.max(opts.labelW || 128, Math.min(190, Math.max.apply(null, itens.map(function (it) { return it.rotulo.length * 6.5 + 12; }))));
+      var valW = compact ? 8 : 62;
       var H = itens.length * rowH + 26;
-      var W = Math.max(300, width);
+      var W = Math.max(240, width);
       var iw = W - labelW - valW - 8;
       var svg = el('svg', { width: W, height: H, viewBox: '0 0 ' + W + ' ' + H, role: 'img' });
       svg.appendChild(el('title', {}, [document.createTextNode(opts.aria || '')]));
@@ -322,9 +339,9 @@ window.Charts = (function () {
 
       itens.forEach(function (it, i) {
         var y = i * rowH + 6;
-        var cy = y + rowH / 2 - 4;
+        var cy = compact ? y + 34 : y + rowH / 2 - 4;
         var g = el('g', { class: 'hb-row' + (it.classe ? ' ' + it.classe : '') });
-        g.appendChild(txt(labelW - 10, cy + 4, it.rotulo, { class: 'g-label', 'text-anchor': 'end' }));
+        g.appendChild(txt(compact ? 0 : labelW - 10, compact ? y + 8 : cy + 4, it.rotulo, { class: 'g-label', 'text-anchor': compact ? 'start' : 'end' }));
         /* trilho */
         g.appendChild(el('rect', { x: labelW, y: cy - 8, width: iw, height: 16, rx: 3, class: 'g-track' }));
         var v = it.valor;
@@ -338,8 +355,8 @@ window.Charts = (function () {
           g.appendChild(el('rect', { x: X(it.mediana) - 1.4, y: cy - 12, width: 2.8, height: 24, rx: 1.4, fill: '#5b6470', class: 'g-mediana' }));
         }
         /* valor */
-        g.appendChild(txt(W - 8, cy + 4, opts.fmt ? opts.fmt(v) : (v == null ? '—' : String(v)), { class: 'g-value', 'text-anchor': 'end' }));
-        if (it.sub) g.appendChild(txt(W - 8, cy + 15, it.sub, { class: 'g-sub', 'text-anchor': 'end' }));
+        g.appendChild(txt(W - 8, compact ? y + 8 : cy + 4, opts.fmt ? opts.fmt(v) : (v == null ? '—' : String(v)), { class: 'g-value', 'text-anchor': 'end' }));
+        if (it.sub) g.appendChild(txt(W - 8, compact ? y + 58 : cy + 15, it.sub, { class: 'g-sub', 'text-anchor': 'end' }));
         g.appendChild(el('rect', { x: 0, y: y - 6, width: W, height: rowH, fill: 'transparent', class: 'g-hit' }));
         if (opts.tooltip) {
           g.addEventListener('mousemove', function (e) { showTip(opts.tooltip(it), e.clientX, e.clientY); });
@@ -699,12 +716,25 @@ window.Charts = (function () {
         svg.appendChild(txt(ml + iw - 2, Y(opts.yDiv) - 5, opts.yDivRotulo || '', { class: 'g-divider-label', 'text-anchor': 'end' }));
       }
 
+      var occupied = [];
       opts.pontos.forEach(function (p) {
-        var g = el('g', { class: 'scatter-point' });
+        var g = el('g', { class: 'scatter-point', tabindex: '0', role: 'img', 'aria-label': p.rotulo + ': média ' + p.x + ', oscilação ' + p.y });
         g.appendChild(el('circle', { cx: X(p.x), cy: Y(p.y), r: p.destaque ? 8 : 6, fill: p.cor || '#2e5aa8', opacity: 0.85, stroke: '#fff', 'stroke-width': 1.5 }));
-        g.appendChild(txt(X(p.x), Y(p.y) - 12, p.rotulo, { class: 'g-point-label', 'text-anchor': 'middle' }));
+        var lw = p.rotulo.length * 6 + 8, lx = Math.max(ml + lw / 2, Math.min(W - lw / 2 - 6, X(p.x)));
+        var ly = Y(p.y) - 14;
+        for (var attempt = 0; attempt < 20; attempt++) {
+          ly = Y(p.y) - 14 - attempt * 16;
+          if (ly < mt + 14) ly = Y(p.y) + 22 + attempt * 16;
+          var collision = occupied.some(function (b) { return Math.abs(b.x - lx) < (b.w + lw) / 2 && Math.abs(b.y - ly) < 15; });
+          if (!collision && ly < H - mb) break;
+        }
+        occupied.push({ x: lx, y: ly, w: lw });
+        if (Math.abs(ly - Y(p.y)) > 18) g.appendChild(el('line', { x1: X(p.x), y1: Y(p.y), x2: lx, y2: ly + 3, stroke: '#b8abc7', 'stroke-width': 1 }));
+        g.appendChild(txt(lx, ly, p.rotulo, { class: 'g-point-label', 'text-anchor': 'middle', style: 'paint-order:stroke;stroke:#fff;stroke-width:3px;stroke-linejoin:round' }));
         if (opts.tooltip) {
-          g.addEventListener('mousemove', function (e) { showTip(opts.tooltip(p), e.clientX, e.clientY); });
+          g.addEventListener('pointermove', function (e) { showTip(opts.tooltip(p), e.clientX, e.clientY); });
+          g.addEventListener('focus', function () { var r = g.getBoundingClientRect(); showTip(opts.tooltip(p), r.left, r.top); });
+          g.addEventListener('blur', hideTip);
           g.addEventListener('mouseleave', hideTip);
         }
         svg.appendChild(g);
@@ -772,11 +802,12 @@ window.Charts = (function () {
     mount(host, function (width) {
       clear(host);
       var itens = opts.itens;
-      var rowH = opts.rowH || 32;
-      var labelW = opts.labelW || 132;
-      var H = itens.length * rowH + 24;
-      var W = Math.max(320, width);
-      var iw = W - labelW - 14;
+      var compact = width < 550;
+      var rowH = compact ? 66 : (opts.rowH || 38);
+      var labelW = compact ? 0 : (opts.labelW || 144);
+      var H = itens.length * rowH + 52;
+      var W = Math.max(240, width);
+      var iw = W - labelW - (compact ? 12 : 155);
       var svg = el('svg', { width: W, height: H, viewBox: '0 0 ' + W + ' ' + H, role: 'img' });
       svg.appendChild(el('title', {}, [document.createTextNode(opts.aria || '')]));
       function X(v) { return labelW + v / 10 * iw; }
@@ -791,9 +822,10 @@ window.Charts = (function () {
       }
 
       itens.forEach(function (it, i) {
-        var cy = i * rowH + rowH / 2 - 2;
+        var y = i * rowH + 24;
+        var cy = y + (compact ? 30 : rowH / 2 - 2);
         var g = el('g');
-        g.appendChild(txt(labelW - 10, cy + 4, it.rotulo, { class: 'g-label', 'text-anchor': 'end' }));
+        g.appendChild(txt(compact ? 0 : labelW - 10, compact ? y + 8 : cy + 4, it.rotulo, { class: 'g-label', 'text-anchor': compact ? 'start' : 'end' }));
         if (it.min != null && it.max != null) {
           g.appendChild(el('rect', { x: X(it.min), y: cy - 5, width: Math.max(3, X(it.max) - X(it.min)), height: 10, rx: 5, fill: it.cor || '#9fb4d0', opacity: 0.35 }));
         }
@@ -801,8 +833,8 @@ window.Charts = (function () {
           if (p.nota == null) return;
           g.appendChild(el('circle', { cx: X(p.nota), cy: cy, r: 4.4, fill: '#fff', stroke: it.cor || '#2e5aa8', 'stroke-width': 2.2 }));
         });
-        if (it.extra) g.appendChild(txt(W - 4, cy + 4, it.extra, { class: 'g-value', 'text-anchor': 'end' }));
-        g.appendChild(el('rect', { x: 0, y: i * rowH, width: W, height: rowH, fill: 'transparent' }));
+        if (it.extra) g.appendChild(txt(W - 4, compact ? y + 56 : cy + 4, it.extra, { class: 'g-sub', 'text-anchor': 'end' }));
+        g.appendChild(el('rect', { x: 0, y: y - 6, width: W, height: rowH, fill: 'transparent' }));
         if (opts.tooltip) {
           g.addEventListener('mousemove', function (e) { showTip(opts.tooltip(it), e.clientX, e.clientY); });
           g.addEventListener('mouseleave', hideTip);
@@ -898,13 +930,13 @@ window.Charts = (function () {
       function arco(de, ate, cor, largura) {
         var p0 = ponto(de), p1 = ponto(ate);
         svg.appendChild(el('path', {
-          d: 'M' + p0[0].toFixed(1) + ' ' + p0[1].toFixed(1) + ' A' + r + ' ' + r + ' 0 ' + ((ate - de) > 0.5 ? 1 : 0) + ' 1 ' + p1[0].toFixed(1) + ' ' + p1[1].toFixed(1),
+          d: 'M' + p0[0].toFixed(1) + ' ' + p0[1].toFixed(1) + ' A' + r + ' ' + r + ' 0 0 1 ' + p1[0].toFixed(1) + ' ' + p1[1].toFixed(1),
           fill: 'none', stroke: cor, 'stroke-width': largura, 'stroke-linecap': 'round'
         }));
       }
-      arco(0, 1, '#eef1f4', 14);
+      arco(0, 1, '#d9cee7', 14);
       var frac = (opts.valor || 0) / max;
-      if (frac > 0.005) arco(Math.max(0, frac - 0.001), frac, opts.cor || COR.verde, 14);
+      if (frac > 0.005) arco(0, frac, opts.cor || COR.verde, 14);
       if (opts.ref != null) {
         var fr = opts.ref / max;
         var pr = ponto(fr);
@@ -929,7 +961,7 @@ window.Charts = (function () {
     });
   }
 
-  return {
+  return { dispose: dispose,
     mount: mount, clear: clear,
     lineChart: lineChart, miniLine: miniLine, hBars: hBars, boxGrid: boxGrid, boxRows: boxRows,
     heatmap: heatmap, slope: slope, scatter: scatter, histogram: histogram, legend: legend,

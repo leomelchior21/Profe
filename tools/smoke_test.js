@@ -4,6 +4,7 @@
 const fs = require('fs');
 const path = require('path');
 const vm = require('vm');
+const crypto = require('crypto');
 
 const root = path.join(__dirname, '..');
 const sandbox = { window: {}, console, localStorage: null };
@@ -15,8 +16,19 @@ vm.createContext(sandbox);
   vm.runInContext(code, sandbox, { filename: f });
 });
 
-const dados = fs.readFileSync(path.join(root, 'web', 'js', 'dados.js'), 'utf8');
-vm.runInContext(dados, sandbox, { filename: 'dados.js' });
+const privateData = path.join(root, 'data', 'dados.js');
+if (fs.existsSync(privateData)) {
+  vm.runInContext(fs.readFileSync(privateData, 'utf8'), sandbox, { filename: 'dados.js' });
+} else {
+  if (!process.env.PANEL_PASSWORD) throw new Error('Defina PANEL_PASSWORD para testar o pacote criptografado.');
+  vm.runInContext(fs.readFileSync(path.join(root, 'web', 'js', 'dados.enc.js'), 'utf8'), sandbox);
+  const payload = sandbox.window.PROTECTED_DATA;
+  const encrypted = Buffer.from(payload.data, 'base64');
+  const key = crypto.pbkdf2Sync(process.env.PANEL_PASSWORD, Buffer.from(payload.salt, 'base64'), payload.iterations, 32, 'sha256');
+  const decipher = crypto.createDecipheriv('aes-256-gcm', key, Buffer.from(payload.iv, 'base64'));
+  decipher.setAuthTag(encrypted.subarray(-16));
+  sandbox.window.SCHOOL_DATA = JSON.parse(Buffer.concat([decipher.update(encrypted.subarray(0, -16)), decipher.final()]).toString('utf8'));
+}
 
 const A = sandbox.window.Analytics;
 A.Store.init(sandbox.window.SCHOOL_DATA);
@@ -95,12 +107,24 @@ const transferido = A.Store.alunosDoEscopo({}).find((a) => a.status === 'Transfe
 if (transferido) {
   const sdt = A.Store.studentData(transferido.ra, {});
   check('aluno transferido tratado sem erro', sdt != null, transferido.nome);
-  console.log('       transferido:', transferido.nome, '| disciplinas com nota:', sdt.numericas.length, '| insights:', A.Insights.student(sdt).length);
+  console.log('       transferido: disciplinas com nota:', sdt.numericas.length, '| insights:', A.Insights.student(sdt).length);
 }
 
 /* filtro por turma */
 const sd9b = A.Store.studentData(A.Store.alunosDoEscopo({ turma: '9B' })[0].ra, { turma: '9B' });
 check('escopo por turma funciona', sd9b && sd9b.numericas.length > 0);
+check('filtro de turma restringe os alunos disponíveis', op.turmas.every((turma) => {
+  const options = A.Store.opcoes({ turma });
+  return options.alunos.length === A.Store.alunosDoEscopo({ turma }).length &&
+    options.alunos.every((a) => a.turma === turma) &&
+    options.turmas.length === 1 && options.turmas[0] === turma;
+}));
+check('recuperações da coorte respeitam disciplina e bimestre', (function () {
+  const materia = op.materiasNumericas.find(m => A.norm(m.nome) === A.norm('Matemática')).nome;
+  const actual = A.Store.cohort({}, { materia, bimestre: 2 }).reduce((n, c) => n + c.recuperacoes, 0);
+  const expected = sandbox.window.SCHOOL_DATA.registros.filter(r => A.norm(r.materia) === A.norm(materia) && r.bimestre === 2 && r.recuperacao != null).length;
+  return actual === expected && expected > 0;
+}()));
 
 /* nenhuma inferência comportamental */
 const textos = A.Insights.student(sd).map((i) => i.texto).join(' ').toLowerCase();

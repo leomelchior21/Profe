@@ -1,0 +1,89 @@
+/* Ajustes discretos sobre o visual original. */
+[hidden] { display: none !important; }
+.skip-link { position: fixed; top: 10px; left: 10px; z-index: 300; background: #fff; padding: 10px; transform: translateY(-160%); }
+.skip-link:focus { transform: none; }
+
+.shell { max-width: 1500px; padding-left: clamp(14px, 2.2vw, 30px); padding-right: clamp(14px, 2.2vw, 30px); }
+.view { min-width: 0; }
+.view > *, .grid-2 > *, .card-body, .kpi-hero > * { min-width: 0; }
+.card { padding: clamp(18px, 2vw, 26px); }
+.card-title, .page-title, .kpi-rotulo, .metric-label { overflow-wrap: anywhere; }
+.card-desc { max-width: 850px; line-height: 1.6; }
+.grid-2 { grid-template-columns: repeat(2, minmax(0, 1fr)); }
+.kpi-colors, .insight-grid { grid-template-columns: repeat(auto-fit, minmax(min(100%, 220px), 1fr)); }
+.kpi { padding: clamp(18px, 2vw, 24px); }
+.kpi-lista { overflow-wrap: anywhere; }
+.kpi-hero { grid-template-columns: minmax(0, 1.05fr) minmax(0, 1fr); }
+.stat-strip { grid-template-columns: repeat(auto-fit, minmax(min(100%, 180px), 1fr)); }
+.tabela-wrap, .heat-wrap, .details .card-body { overflow-x: auto; max-width: 100%; overscroll-behavior-x: contain; }
+.chart-host, .card-body svg[role="img"] { max-width: 100%; }
+.tooltip { max-width: min(320px, calc(100vw - 20px)); }
+.nav-tab, .btn, .dd-btn { min-height: 40px; }
+.app-foot .nav-tabs { flex: 0 0 auto; }
+.app-foot .foot-actions { min-width: max-content; }
+.meeting-body > * { width: min(100%, 1180px); }
+.print-report { max-width: min(96vw, 920px); }
+
+/* Entrada simples com o logo original e um único campo. */
+.auth-wall { position: fixed; inset: 0; z-index: 200; display: grid; place-items: center; padding: 20px; overflow-y: auto; }
+.login-form { width: min(100%, 380px); padding: 32px; background: #fff; border-radius: 22px; box-shadow: 0 24px 70px rgba(27, 12, 54, .24); }
+.login-logo { display: flex; align-items: center; justify-content: center; gap: 12px; color: var(--tinta); font-size: 26px; font-weight: 800; margin-bottom: 30px; }
+.login-logo .brand-mark { width: 40px; height: 40px; }
+.login-form label { display: block; font-size: 13px; font-weight: 700; margin-bottom: 9px; }
+.password-field { display: flex; align-items: center; border: 1px solid #d7d2e2; border-radius: 12px; overflow: hidden; }
+.password-field:focus-within { border-color: #7453bc; box-shadow: 0 0 0 3px rgba(116, 83, 188, .13); }
+.password-field input { flex: 1; min-width: 0; min-height: 46px; padding: 12px 13px; border: 0; outline: none; background: #fff; color: var(--tinta); font-size: 16px; }
+.password-field button { flex: 0 0 auto; min-height: 44px; padding: 0 13px; border: 0; background: #fff; color: #6241a1; font-size: 12px; cursor: pointer; }
+.login-error { min-height: 25px; margin: 8px 0; color: #a63b31; font-size: 12px; }
+.login-form > .btn { width: 100%; min-height: 44px; }
+.topbar > #btn-lock { flex: 0 0 auto; font-size: 12px; }
+
+@media (max-width: 1180px) {
+  .topbar { flex-wrap: wrap; }
+  .topbar .filterbar { order: 3; flex: 1 1 100%; width: 100%; margin-left: 0; padding-bottom: 2px; }
+  .topbar > #btn-lock { margin-left: auto; }
+  .shell { margin-top: 142px; }
+  .grid-2 { grid-template-columns: 1fr; }
+}
+@media (max-width: 900px) {
+  .kpi-hero { grid-template-columns: 1fr; }
+  .shell { margin-top: 136px; }
+  .app-foot { flex-wrap: wrap; padding: 8px 12px; gap: 4px 12px; }
+  .app-foot .nav-tabs { width: 100%; overflow-x: auto; scrollbar-width: none; }
+  .app-foot .nav-tabs::-webkit-scrollbar { display: none; }
+  .app-foot .foot-actions { margin-left: 0; }
+  .app-foot .foot-sep { display: none; }
+  .shell { padding-bottom: 130px; }
+  .meeting-foot-centro { min-width: 0; }
+  .meeting-progress { gap: 6px; }
+}
+@media (max-width: 600px) {
+  .shell { width: calc(100% - 20px); margin-top: 132px; padding: 0 12px 140px; }
+  .topbar { padding: 8px 12px; }
+  .topbar .brand { min-width: 0; }
+  .filterbar { overflow-x: auto; }
+  .filterbar .dd-btn { max-width: 170px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+  .filter-aluno .dd-btn { max-width: 210px; }
+  .kpi-hero { padding: 20px 16px; }
+  .kpi-hero-barras { padding-right: 0; }
+  .kpi-avatar { display: none; }
+  .gauge-wrap { flex: 0 0 auto; width: min(180px, 100%); }
+  .gauge-host svg { max-width: 100%; height: auto; }
+  .kpi-hero-linha { align-items: flex-start; }
+  .kpi-valor { font-size: clamp(34px, 10vw, 44px); }
+  .card { margin-bottom: 14px; }
+  .student-facts { gap: 7px; }
+  .fact { padding: 7px 11px; }
+  .app-foot .scope-line, .app-foot .chip-alertas, .app-foot .nav-aluno { display: none; }
+  .app-foot .foot-actions { min-width: 0; width: 100%; }
+  .app-foot .foot-actions .btn { flex: 1; }
+  .meeting-head { flex-wrap: wrap; }
+  .meeting-actions { width: 100%; }
+  .meeting-actions .btn { flex: 1; }
+  .meeting-body { padding: 12px; }
+  .meeting-foot { gap: 6px; padding: 8px; }
+  .meeting-foot .btn { padding: 8px 10px; }
+  .meeting-aluno, .meeting-step-label { display: none; }
+  .login-form { padding: 26px 22px; }
+}
+@media print { .auth-wall { display: none !important; } }

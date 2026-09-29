@@ -159,7 +159,8 @@ window.Views = (function () {
     var out = { crescimento: [], estavel: [], queda: [] };
     sd.numericas.forEach(function (m) {
       var v = m.variacaoTotal != null ? m.variacaoTotal : m.deltaRecente;
-      if (v == null || Math.abs(v) <= LIM.estavelVariacao) out.estavel.push(m);
+      if (v == null) return;
+      if (Math.abs(v) <= LIM.estavelVariacao) out.estavel.push(m);
       else if (v > 0) out.crescimento.push(m);
       else out.queda.push(m);
     });
@@ -178,7 +179,7 @@ window.Views = (function () {
     el.id = 'resumo';
     el.setAttribute('data-secao', 'resumo');
 
-    if (!sd.numericas.length) {
+    if (sd.mediaGeral == null) {
       var vazio = document.createElement('div');
       vazio.className = 'kpi-hero';
       vazio.innerHTML = '<div class="empty">Sem notas numéricas registradas para este aluno no período.</div>';
@@ -187,7 +188,7 @@ window.Views = (function () {
     }
 
     var cls = classificacaoDisciplinas(sd);
-    var total = sd.numericas.length;
+    var total = sd.numericas.filter(function (m) { return m.media != null; }).length;
     var ref = REF;
 
     /* ---------- cartão principal: média geral + distribuição por faixa ---------- */
@@ -199,8 +200,8 @@ window.Views = (function () {
     var corMedia = ref == null ? Ch.COR.azul : (sd.mediaGeral >= ref ? Ch.COR.verde : Ch.COR.coral);
     var difRef = ref != null ? A.Stats.round2(sd.mediaGeral - ref) : null;
     var chipStatus = difRef == null ? ''
-      : '<span class="status-chip ' + (difRef >= 0.5 ? 'sit-acima' : difRef >= -0.25 ? 'sit-perto' : 'sit-baixo') + '">' +
-        (difRef >= 0.5 ? 'Acima da referência' : difRef >= -0.25 ? 'Na referência' : 'Abaixo da referência') +
+      : '<span class="status-chip ' + (difRef >= 0.5 ? 'sit-acima' : difRef >= 0 ? 'sit-perto' : 'sit-baixo') + '">' +
+        (difRef >= 0.5 ? 'Acima da referência' : difRef >= 0 ? 'Na referência' : 'Abaixo da referência') +
         ' · ' + fs(difRef) + '</span>';
     meta.innerHTML = '<span class="kpi-eyebrow">Média geral do aluno</span>' +
       '<div class="kpi-hero-linha"><div class="gauge-wrap"><div class="gauge-host"></div>' +
@@ -217,6 +218,7 @@ window.Views = (function () {
     avatar.classList.add('kpi-avatar');
     meta.appendChild(avatar);
 
+
     var faixas = [
       { id: 'abaixo', rotulo: 'Abaixo da referência', cor: Ch.COR.coral, valor: sd.numericas.filter(function (m) { return m.media != null && m.media < ref; }).length },
       { id: 'perto', rotulo: 'Na referência', cor: Ch.COR.ambar, valor: sd.numericas.filter(function (m) { return m.media != null && m.media >= ref && m.media < ref + 0.5; }).length },
@@ -228,7 +230,7 @@ window.Views = (function () {
     barrasWrap.className = 'kpi-hero-barras';
     barrasWrap.innerHTML = '<span class="kpi-eyebrow">Distribuição das médias por disciplina</span>';
     barrasWrap.querySelector('.kpi-eyebrow').appendChild(C.ajuda(
-      'Quantas disciplinas ficaram abaixo, na faixa ou acima da nota de referência da escola. A barra mostra a proporção; o número, a quantidade de disciplinas. Toque em uma faixa para ver a lista correspondente.'));
+      'Quantas disciplinas ficaram abaixo, na faixa ou acima da nota de referência da escola. A barra mostra a proporção; o número, a quantidade de disciplinas. Toque em uma faixa para abrir a tabela de disciplinas.'));
     var barrasHost = document.createElement('div');
     barrasHost.className = 'chart-host';
     barrasWrap.appendChild(barrasHost);
@@ -289,6 +291,8 @@ window.Views = (function () {
       linha.appendChild(card);
     });
     el.appendChild(linha);
+    var comparaveis = cls.crescimento.length + cls.estavel.length + cls.queda.length;
+    if (comparaveis < total) el.appendChild(C.aviso((total - comparaveis) + ' disciplina(s) ainda sem dois períodos de nota para comparar a evolução.'));
 
     /* ---------- faixa de estatísticas secundárias ---------- */
     var strip = document.createElement('div');
@@ -1257,12 +1261,11 @@ window.Views = (function () {
      -------------------------------------------------------------------------- */
   function proximos(ctx) {
     var sec = C.secao('proximos', 'Próximos pontos para acompanhar',
-      'Sugestões geradas a partir dos padrões detectados. São pontos de observação — não são prescrições de intervenção nem julgamentos sobre o aluno.',
+      'Pontos de observação derivados dos padrões nos dados. São sugestões para acompanhamento, não intervenções.',
       { ajuda: 'A lista reúne os sinais detectados pelos critérios fixos do painel: quedas recentes, notas abaixo da própria média, oscilações altas e recuperações. Servem para orientar a conversa e o olhar do professor, não são prescrições nem julgamentos.' });
     var itens = A.Insights.monitoring(ctx.sd);
     if (!itens.length) {
       sec.body.appendChild(C.vazio('Nenhum ponto crítico detectado pelos critérios atuais.'));
-      sec.body.appendChild(C.aviso('Os critérios e limiares podem ser ajustados em js/config.js.'));
       return sec.el;
     }
     var ul = document.createElement('ul');
@@ -1369,14 +1372,14 @@ window.Views = (function () {
     /* cartão branco de síntese */
     var resumo = document.createElement('div');
     resumo.className = 'kpi branco';
-    resumo.setAttribute('data-tip', 'Panorama do recorte atual: mediana da ' + rc.medida + rc.periodo +
+    resumo.setAttribute('data-tip', 'Frequência: valor acumulado no boletim, em todas as disciplinas. Notas e recuperações: recorte atual. Mediana da ' + rc.medida + rc.periodo +
       ', frequência média e total de recuperações.' + (rc.rotulo ? ' Recorte aplicado: ' + rc.rotulo + '.' : ''));
     resumo.tabIndex = 0;
     resumo.innerHTML = '<span class="kpi-eyebrow">Recorte</span>' +
       '<span class="kpi-valor escuro">' + f1(mediaGeral) + '</span>' +
       '<span class="kpi-rotulo escuro">' + tituloMediana + ' <span class="card-help" aria-hidden="true">?</span></span>' +
       '<span class="kpi-sub escuro">' + todasMedias.length + ' alunos com nota' + (rc.rotulo ? ' · ' + esc(rc.rotulo) : '') + ' · ' +
-      (frs.length ? pct(A.Stats.round2(A.Stats.mean(frs))) + ' de frequência média' : 'sem frequência registrada') +
+      (frs.length ? pct(A.Stats.round2(A.Stats.mean(frs))) + ' de frequência no boletim' : 'sem frequência registrada') +
       ' · ' + recTotal + ' recuperações</span>';
     el.appendChild(resumo);
 
@@ -1393,7 +1396,7 @@ window.Views = (function () {
         '<span class="kpi-valor">' + (c.medianaMedia == null ? '—' : f1(c.medianaMedia)) + '</span>' +
         '<span class="kpi-rotulo">Turma ' + esc(c.turma) + (abaixo ? ' · abaixo da referência' : ref != null ? ' · na referência ou acima' : '') + '</span>' +
         '<span class="kpi-sub">' + c.nComNota + ' de ' + c.nAlunos + ' alunos com nota' +
-        (c.frequenciaMedia != null ? ' · frequência ' + pct(c.frequenciaMedia) : '') + '</span>' +
+        (c.frequenciaMedia != null ? ' · frequência no boletim ' + pct(c.frequenciaMedia) : '') + '</span>' +
         '<span class="kpi-lista">' + c.recuperacoes + ' recuperações' + (c.faixa != null ? ' · faixa ' + f1(c.faixa) : '') + '</span>';
       card.addEventListener('click', function () {
         var sel = document.getElementById('f-turma');
@@ -1421,7 +1424,7 @@ window.Views = (function () {
     table.className = 'tabela-disciplinas';
     table.innerHTML = '<caption class="visually-hidden">Comparação entre turmas</caption>' +
       '<thead><tr><th scope="col">Turma</th><th scope="col">Alunos com nota</th><th scope="col">Mediana ' + esc(rc.exibicao ? 'de ' + rc.exibicao : 'geral') + '</th>' +
-      '<th scope="col">Frequência</th><th scope="col">Recuperações</th><th scope="col">' + (rc.bimestre ? 'Mediana no ' + esc(rbc(rc.bimestre)) : 'Mediana por bimestre') + '</th></tr></thead>';
+      '<th scope="col">Frequência no boletim</th><th scope="col">Recuperações</th><th scope="col">' + (rc.bimestre ? 'Mediana no ' + esc(rbc(rc.bimestre)) : 'Mediana por bimestre') + '</th></tr></thead>';
     var tbody = document.createElement('tbody');
 
     coorte.forEach(function (c) {
@@ -1642,6 +1645,30 @@ window.Views = (function () {
     return out;
   }
 
+  function cohortGuidance(ctx) {
+    var rc = recorte(ctx);
+    var data = A.Store.cohortSubjectMedians(ctx.scope, rc.bimestre);
+    var rows = data.rows.filter(function (r) { return !rc.materia || A.norm(r.materia) === A.norm(rc.materia); });
+    var signals = rows.map(function (r) {
+      var available = r.valores.filter(function (v) { return v.mediana != null && v.n >= LIM.minimoAlunosTurma; });
+      return { row: r, values: available, below: available.filter(function (v) { return REF != null && v.mediana < REF; }) };
+    }).filter(function (r) { return r.values.length; });
+    signals.sort(function (a, b) { return b.below.length - a.below.length || A.Stats.mean(a.values.map(function (v) { return v.mediana; })) - A.Stats.mean(b.values.map(function (v) { return v.mediana; })); });
+    var sec = C.secao('coorte-leitura', 'Da observação à ação', 'Pistas do recorte atual para a conversa pedagógica.');
+    if (!signals.length) { sec.body.appendChild(C.vazio('Sem amostra suficiente para uma leitura coletiva.')); return sec.el; }
+    var ul = document.createElement('ul'); ul.className = 'guidance-list';
+    signals.slice(0, 3).forEach(function (signal, i) {
+      var li = document.createElement('li');
+      var below = signal.below.length;
+      var evidence = below ? below + ' de ' + signal.values.length + ' turmas com mediana abaixo de ' + f1(REF) + '.' : 'Medianas: ' + signal.values.map(function (v) { return v.turma + ' · ' + f1(v.mediana); }).join(' / ') + '.';
+      var action = below ? 'Investigar habilidades comuns nas avaliações e planejar uma retomada com os professores.' : 'Comparar estratégias e atividades das turmas para reconhecer práticas que podem ser compartilhadas.';
+      li.innerHTML = '<span class="guidance-number">0' + (i + 1) + '</span><div><h3>' + esc(signal.row.rotulo) + '</h3><p>' + esc(evidence) + '</p><small>' + esc(action) + '</small></div>';
+      ul.appendChild(li);
+    });
+    sec.body.appendChild(ul);
+    return sec.el;
+  }
+
   function cohortNotas(ctx) {
     var sec = C.secao('coorte-notas', 'Como ler este modo',
       'Este modo compara turmas, nunca alunos. Os nomes dos estudantes não aparecem em nenhuma distribuição, e não há ranking entre alunos.',
@@ -1673,7 +1700,7 @@ window.Views = (function () {
     { id: 'disciplinas', titulo: 'Disciplinas', desc: 'Visão geral, perfil, consistência e mapa por bimestre', secoes: ['tabela', 'perfil', 'consistencia', 'mapa'] },
     { id: 'turma', titulo: 'Contexto da turma', desc: 'Como a nota se situa na distribuição da turma', secoes: ['contexto'] },
     { id: 'recuperacao', titulo: 'Recuperação', desc: 'O papel das recuperações nos resultados', secoes: ['recuperacao'] },
-    { id: 'proximos', titulo: 'Próximos pontos', desc: 'O que acompanhar no próximo período', secoes: ['proximos'] }
+    { id: 'proximos', titulo: 'Próximos passos', desc: 'O que acompanhar no próximo período', secoes: ['proximos'] }
   ];
 
   function secoesDoAluno(ctx) {
@@ -1752,13 +1779,13 @@ window.Views = (function () {
   }
 
   return {
-    renderStudent: renderStudent, secoesDoAluno: secoesDoAluno, PASSOS: PASSOS,
+    mapaCores: mapaCores, renderStudent: renderStudent, secoesDoAluno: secoesDoAluno, PASSOS: PASSOS,
     agruparSecoes: agruparSecoes,
     cabecalhoAluno: cabecalhoAluno, resumo: resumo, leitura: leitura, trajetoria: trajetoria,
     evolucao: evolucao, perfil: perfil, contexto: contexto, mapa: mapa, variacao: variacao,
     consistencia: consistencia, recuperacao: recuperacao, areas: areas, smallMultiples: smallMultiples,
     padroes: padroes, proximos: proximos, detalhados: detalhados,
-    cohortResumo: cohortResumo, cohortTabela: cohortTabela, cohortMediana: cohortMediana, cohortEvolucao: cohortEvolucao,
+    cohortGuidance: cohortGuidance, cohortResumo: cohortResumo, cohortTabela: cohortTabela, cohortMediana: cohortMediana, cohortEvolucao: cohortEvolucao,
     cohortDistribuicao: cohortDistribuicao, cohortNotas: cohortNotas, classData: classData,
     blocoInsights: blocoInsights
   };

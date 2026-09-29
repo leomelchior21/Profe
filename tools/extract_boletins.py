@@ -4,7 +4,7 @@ Extrator dos boletins (PDF) -> dataset normalizado.
 
 Entrada : source/*.pdf  (um PDF por turma, uma pagina por aluno)
 Saidas  : data/boletins.csv            (tabela "tidy", uma linha por aluno x disciplina x bimestre)
-          web/js/dados.js              (dataset embutido, para o painel rodar 100% offline via file://)
+          data/dados.js              (dataset embutido, para o painel rodar 100% offline via file://)
 
 Regras de leitura:
   - Colunas da tabela do boletim, por bimestre: NB (nota bimestral), R (recuperacao), MB (media bimestral), FA (faltas)
@@ -224,7 +224,7 @@ def main():
         "eventos_recuperacao": len(com_rec),
         "aviso": "Dataset extratificado dos boletins PDF (fonte original). Campos vazios = None, nunca zero.",
     }
-    js_path = os.path.join(WEB_DATA_DIR, "dados.js")
+    js_path = os.path.join(DATA_DIR, "dados.js")
     with open(js_path, "w", encoding="utf-8") as f:
         f.write("/* GERADO AUTOMATICAMENTE por tools/extract_boletins.py - nao editar manualmente. */\n")
         f.write("window.SCHOOL_DATA = ")

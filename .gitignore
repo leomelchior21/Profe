@@ -1,9 +1,11 @@
-node_modules
+node_modules/
+test-results/
+artifacts/
 *.log
 .DS_Store
 Thumbs.db
 
-# dados individuais de estudantes — nunca versionar
+# Boletins e dados de estudantes em texto claro ficam apenas nesta máquina.
 data/
 source/
 web/js/dados.js

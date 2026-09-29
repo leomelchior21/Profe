@@ -158,13 +158,13 @@
   function refrescarFiltros() {
     var op = A.Store.opcoes({});
     state.filtros.anoLetivo = preencherSelect($('f-ano-letivo'),
-      op.anosLetivos.map(function (y) { return { valor: String(y), rotulo: 'Ano letivo ' + y }; }),
-      state.filtros.anoLetivo, 'Todos os anos letivos');
+      op.anosLetivos.map(function (y) { return { valor: String(y), rotulo: String(y) }; }),
+      state.filtros.anoLetivo, 'Todos');
 
     var op1 = A.Store.opcoes({ anoLetivo: state.filtros.anoLetivo });
     state.filtros.ano = preencherSelect($('f-ano'),
       op1.anos.map(function (y) { return { valor: String(y), rotulo: y + 'º ano' }; }),
-      state.filtros.ano, 'Todos os anos escolares');
+      state.filtros.ano, 'Todos');
 
     var op2 = A.Store.opcoes({ anoLetivo: state.filtros.anoLetivo, ano: state.filtros.ano });
     state.filtros.turma = preencherSelect($('f-turma'),
@@ -184,7 +184,7 @@
 
     state.filtros.bimestre = preencherSelect($('f-bimestre'),
       op3.bimestres.map(function (b) { return { valor: String(b), rotulo: A.rotuloBimestre(b) }; }),
-      state.filtros.bimestre, 'Todos os bimestres');
+      state.filtros.bimestre, 'Todos');
 
     $('f-aluno').classList.toggle('destaque-filtro', !!state.filtros.aluno);
 
@@ -219,7 +219,7 @@
     var sd = ra ? A.Store.studentData(ra, scope) : null;
     var ctx = {
       sd: sd, scope: scope,
-      filtros: { disciplina: state.filtros.disciplina, bimestre: state.filtros.bimestre },
+      filtros: { disciplina: meeting ? '' : state.filtros.disciplina, bimestre: meeting ? '' : state.filtros.bimestre },
       state: state, meeting: !!meeting,
       rerender: function () { render(); },
       onFiltrarDisciplina: function (nome) {
@@ -240,6 +240,8 @@
 
   function render() {
     var view = $('view');
+    window.Charts.dispose(view);
+    window.Charts.hideTip();
     var scroll = window.scrollY;
     view.innerHTML = '';
     view.setAttribute('aria-busy', 'true');
@@ -257,40 +259,32 @@
   /* ------------------------------------------------- abas, alertas e rolagem */
 
   var observerAbas = null;
-
   function atualizarAbas() {
     var alunoAtivo = !!state.filtros.aluno;
     document.querySelectorAll('.nav-tab').forEach(function (b) {
       var alvo = b.getAttribute('data-alvo');
-      var existe = !!(alvo && $(alvo));
-      b.classList.toggle('desabilitada', !existe);
+      b.classList.toggle('desabilitada', !(alvo && $(alvo)));
     });
-
-    /* alerta de pontos de atenção */
     var alerta = $('chip-alertas');
     var n = 0;
     if (alunoAtivo) {
       var sd = A.Store.studentData(state.filtros.aluno, scopeAtual());
       if (sd) n = A.Insights.student(sd).filter(function (i) { return i.tom === 'atencao'; }).length;
     }
-    if (alerta) {
-      alerta.classList.toggle('oculto', !alunoAtivo);
-      var num = $('chip-alertas-num');
-      if (num) num.textContent = String(n);
-      alerta.setAttribute('aria-label', n + ' pontos de atenção observados');
-    }
-
+    alerta.classList.toggle('oculto', !alunoAtivo);
+    $('chip-alertas-num').textContent = String(n);
+    alerta.setAttribute('aria-label', n + ' pontos de atenção observados');
     if (observerAbas) observerAbas.disconnect();
     if ('IntersectionObserver' in window) {
       observerAbas = new IntersectionObserver(function (entries) {
-        entries.forEach(function (e) {
-          if (!e.isIntersecting) return;
+        entries.forEach(function (entry) {
+          if (!entry.isIntersecting) return;
           document.querySelectorAll('.nav-tab').forEach(function (b) {
-            b.classList.toggle('ativa', b.getAttribute('data-alvo') === e.target.id);
+            b.classList.toggle('ativa', b.getAttribute('data-alvo') === entry.target.id);
           });
         });
       }, { rootMargin: '-140px 0px -65% 0px', threshold: 0 });
-      document.querySelectorAll('[data-secao]').forEach(function (s) { observerAbas.observe(s); });
+      document.querySelectorAll('[data-secao]').forEach(function (section) { observerAbas.observe(section); });
     }
   }
 
@@ -298,19 +292,15 @@
     var ctx = buildCtx(false);
     var banner = document.createElement('section');
     banner.className = 'banner';
-    banner.innerHTML = '<div class="page-head">' +
-      '<div><h1 class="page-title">Turma / coorte</h1>' +
+    banner.innerHTML = '<div class="page-head"><div><h1 class="page-title">Turma / coorte</h1>' +
       '<p class="page-sub">Comparação entre turmas, sem identificar alunos. Selecione um aluno no filtro <b>Aluno</b> para entrar no <b>modo reunião</b>.</p></div>' +
-      '<span class="chip-suave">' + C.icone('pessoas') + ' ' + A.Store.opcoes(ctx.scope).turmas.length + ' turmas no recorte</span>' +
-      '</div>';
+      '<span class="chip-suave">' + C.icone('pessoas') + ' ' + A.Store.opcoes(ctx.scope).turmas.length + ' turmas no recorte</span></div>';
     view.appendChild(banner);
-
     view.appendChild(V.cohortResumo(ctx));
     view.appendChild(V.cohortTabela(ctx));
     view.appendChild(V.cohortEvolucao(ctx));
     view.appendChild(V.cohortMediana(ctx));
-    var dists = V.cohortDistribuicao(ctx);
-    dists.forEach(function (el) { view.appendChild(el); });
+    V.cohortDistribuicao(ctx).forEach(function (el) { view.appendChild(el); });
     view.appendChild(V.cohortNotas(ctx));
   }
 
@@ -326,11 +316,13 @@
     ov.setAttribute('aria-hidden', 'false');
     document.body.style.overflow = 'hidden';
     renderMeetingPasso();
-    var close = ov.querySelector('.meeting-close');
+    $('app').inert = true;
+    var close = $('meeting-close');
     if (close) close.focus();
   }
 
   function fecharReuniao() {
+    $('app').inert = false;
     state.meeting = false;
     document.body.classList.remove('meeting-on');
     var ov = $('meeting');
@@ -344,6 +336,7 @@
     var ctx = buildCtx(true);
     var passo = V.PASSOS[state.meetingPasso];
     var body = $('meeting-body');
+    window.Charts.dispose(body);
     body.innerHTML = '';
     var head = $('meeting-step-head');
     head.innerHTML = '<span class="meeting-step-count">Passo ' + (state.meetingPasso + 1) + ' de ' + V.PASSOS.length + '</span>' +
@@ -372,6 +365,7 @@
       var b = document.createElement('button');
       b.type = 'button';
       b.className = 'dot' + (i === state.meetingPasso ? ' active' : '');
+      if (i === state.meetingPasso) b.setAttribute('aria-current', 'step');
       b.setAttribute('aria-label', 'Ir para o passo ' + (i + 1) + ': ' + p.titulo);
       b.addEventListener('click', function () { state.meetingPasso = i; renderMeetingPasso(); });
       prog.appendChild(b);
@@ -398,8 +392,15 @@
     if (!state.filtros.aluno) return;
     var ov = $('printOverlay');
     ov.classList.add('open');
+    ov.setAttribute('aria-hidden', 'false');
+    ov.setAttribute('role', 'dialog');
+    ov.setAttribute('aria-modal', 'true');
+    ov.setAttribute('aria-label', 'Resumo para impressão');
+    $('app').inert = true;
+    $('meeting').inert = true;
     document.body.classList.add('printing');
     var report = $('printReport');
+    window.Charts.dispose(report);
     report.innerHTML = '';
     var ctx = buildCtx(false);
 
@@ -416,6 +417,7 @@
     btClose.addEventListener('click', fecharRelatorio);
     acoes.appendChild(btPrint); acoes.appendChild(btClose);
     report.appendChild(acoes);
+    btClose.focus();
 
     /* monta depois do layout para os gráficos calcularem a largura corretamente */
     setTimeout(function () { montarRelatorio(report, ctx); }, 30);
@@ -425,6 +427,10 @@
     var ov = $('printOverlay');
     ov.classList.remove('open');
     document.body.classList.remove('printing');
+    ov.setAttribute('aria-hidden', 'true');
+    $('app').inert = state.meeting;
+    $('meeting').inert = false;
+    (state.meeting ? $('meeting-print') : $('btn-resumo')).focus();
   }
 
   function montarRelatorio(host, ctx) {
@@ -546,8 +552,7 @@
       .sort(function (a, b) { return Math.abs(b.variacaoTotal) - Math.abs(a.variacaoTotal); })
       .slice(0, 2).forEach(function (m) { dest[m.nome] = 1; });
 
-    var cores = {};
-    sd.numericas.forEach(function (m, i) { cores[m.nome] = Ch.paletteCategoria(i); });
+    var cores = V.mapaCores(sd);
 
     Ch.lineChart(host, {
       altura: 260, interativo: false,
@@ -630,7 +635,17 @@
     $('printOverlay').addEventListener('click', function (e) { if (e.target === $('printOverlay')) fecharRelatorio(); });
 
     document.addEventListener('keydown', function (e) {
-      if (!$('meeting').classList.contains('open')) return;
+      if ($('printOverlay').classList.contains('open') && e.key === 'Escape') { fecharRelatorio(); return; }
+      if (e.key === 'Tab') {
+        var modal = $('printOverlay').classList.contains('open') ? $('printOverlay') : state.meeting ? $('meeting') : null;
+        if (modal) {
+          var items = Array.from(modal.querySelectorAll('button:not(:disabled), [tabindex="0"]')).filter(function (el) { return el.getClientRects().length; });
+          var first = items[0], last = items[items.length - 1];
+          if (e.shiftKey && document.activeElement === first) { e.preventDefault(); last.focus(); }
+          else if (!e.shiftKey && document.activeElement === last) { e.preventDefault(); first.focus(); }
+        }
+      }
+      if (!$('meeting').classList.contains('open') || $('printOverlay').classList.contains('open')) return;
       var tag = (e.target.tagName || '').toLowerCase();
       if (tag === 'textarea' || tag === 'input' || tag === 'select') return;
       if (e.key === 'ArrowRight' || e.key === 'PageDown') { e.preventDefault(); passo(1); }
@@ -683,8 +698,7 @@
   function init() {
     if (!window.SCHOOL_DATA) {
       document.getElementById('view').innerHTML =
-        '<section class="card"><div class="empty">Dataset não encontrado (web/js/dados.js). ' +
-        'Gere-o com <code>python tools/extract_boletins.py</code>.</div></section>';
+        '<section class="card"><div class="empty">Dados protegidos indisponíveis. Recarregue a página.</div></section>';
       return;
     }
     A.Store.init(window.SCHOOL_DATA);
@@ -695,6 +709,5 @@
     render();
   }
 
-  if (document.readyState === 'loading') document.addEventListener('DOMContentLoaded', init);
-  else init();
+  document.addEventListener('profe:unlocked', init, { once: true });
 })();

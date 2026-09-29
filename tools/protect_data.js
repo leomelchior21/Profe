@@ -1,0 +1,17 @@
+'use strict';
+const fs = require('node:fs');
+const path = require('node:path');
+const crypto = require('node:crypto');
+const vm = require('node:vm');
+const root = path.resolve(__dirname, '..');
+const password = process.env.PANEL_PASSWORD;
+if (!password) throw new Error('Defina PANEL_PASSWORD para criptografar o dataset.');
+const sandbox = { window: {} };
+vm.runInNewContext(fs.readFileSync(path.join(root, 'data/dados.js'), 'utf8'), sandbox);
+const salt = crypto.randomBytes(16), iv = crypto.randomBytes(12), iterations = 600000;
+const key = crypto.pbkdf2Sync(password, salt, iterations, 32, 'sha256');
+const cipher = crypto.createCipheriv('aes-256-gcm', key, iv);
+const encrypted = Buffer.concat([cipher.update(JSON.stringify(sandbox.window.SCHOOL_DATA), 'utf8'), cipher.final(), cipher.getAuthTag()]);
+const payload = { version: 1, iterations, salt: salt.toString('base64'), iv: iv.toString('base64'), data: encrypted.toString('base64') };
+fs.writeFileSync(path.join(root, 'web/js/dados.enc.js'), 'window.PROTECTED_DATA = ' + JSON.stringify(payload) + ';\n');
+console.log('Dataset protegido atualizado.');

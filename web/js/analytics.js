@@ -209,6 +209,7 @@ window.Analytics = (function () {
       var alunos = Object.keys(ix.alunos).map(function (k) { return ix.alunos[k]; });
       if (scope.anoLetivo) alunos = alunos.filter(function (a) { return String(a.anoLetivo) === String(scope.anoLetivo); });
       if (scope.ano) alunos = alunos.filter(function (a) { return String(a.ano) === String(scope.ano); });
+      if (scope.turma) alunos = alunos.filter(function (a) { return a.turma === scope.turma; });
       var turmas = {}; alunos.forEach(function (a) { turmas[a.turma] = true; });
       var materias = Object.keys(ix.materiasGlobais).sort(ordemMaterias).map(function (k) {
         return { nome: k, rotulo: nomeExibicao(k), numerica: ix.materiasGlobais[k].numerica, semNota: materiaSemNota(k) };
@@ -442,11 +443,16 @@ window.Analytics = (function () {
         var sdList = porTurma[t].alunos.map(function (a) {
           return Store.studentData(a.ra, { anoLetivo: a.anoLetivo, ano: a.ano, turma: a.turma });
         });
-        var comNota = sdList.filter(function (sd) { return sd && sd.numericas.length; });
+        var comNota = sdList.filter(function (sd) { return sd && valorDoAluno(sd, opts.materia, opts.bimestre) != null; });
         var medias = comNota.map(function (sd) { return valorDoAluno(sd, opts.materia, opts.bimestre); })
           .filter(function (v) { return v != null; });
         var frs = comNota.map(function (sd) { return sd.frequenciaMedia; }).filter(function (x) { return x != null; });
-        var recs = comNota.reduce(function (s, sd) { return s + sd.recuperacoes.length; }, 0);
+        var recs = comNota.reduce(function (s, sd) {
+          return s + sd.recuperacoes.filter(function (r) {
+            return (!opts.materia || norm(r.materia) === norm(opts.materia)) &&
+              (!opts.bimestre || r.bimestre === Number(opts.bimestre));
+          }).length;
+        }, 0);
         return {
           turma: t,
           nAlunos: sdList.length,

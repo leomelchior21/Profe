@@ -1,0 +1,12 @@
+{
+  "name": "profe-painel",
+  "private": true,
+  "scripts": {
+    "start": "node tools/serve.js",
+    "test": "node tools/smoke_test.js && node tools/ui_test.js",
+    "protect": "node tools/protect_data.js"
+  },
+  "devDependencies": {
+    "@playwright/test": "^1.58.0"
+  }
+}
