@@ -230,34 +230,38 @@ window.Views = (function () {
     barrasWrap.className = 'kpi-hero-barras';
     barrasWrap.innerHTML = '<span class="kpi-eyebrow">Distribuição das médias por disciplina</span>';
     barrasWrap.querySelector('.kpi-eyebrow').appendChild(C.ajuda(
-      'Quantas disciplinas ficaram abaixo, na faixa ou acima da nota de referência da escola. A barra mostra a proporção; o número, a quantidade de disciplinas. Toque em uma faixa para abrir a tabela de disciplinas.'));
-    var barrasHost = document.createElement('div');
-    barrasHost.className = 'chart-host';
-    barrasWrap.appendChild(barrasHost);
+      'Uma barra mostra a proporção de disciplinas abaixo, na faixa ou acima da nota de referência da escola. A legenda traz a quantidade e o percentual de cada faixa. Toque em um trecho para abrir a tabela.'));
+    var barra = document.createElement('div');
+    barra.className = 'grade-segmented-bar';
+    barra.setAttribute('role', 'group');
+    barra.setAttribute('aria-label', 'Distribuição das médias de ' + total + ' disciplinas');
+    var legendaBarra = document.createElement('div');
+    legendaBarra.className = 'grade-segmented-legend';
+    faixas.forEach(function (f) {
+      var percentual = total ? Math.round(f.valor / total * 100) : 0;
+      if (f.valor) {
+        var trecho = document.createElement('button');
+        trecho.type = 'button';
+        trecho.className = 'grade-segment';
+        trecho.style.flexGrow = String(f.valor);
+        trecho.style.background = f.cor;
+        trecho.setAttribute('aria-label', f.rotulo + ': ' + f.valor + ' de ' + total + ' disciplinas, ' + percentual + '%. Abrir tabela de disciplinas.');
+        trecho.addEventListener('click', function () { if (ctx.onFiltrarSituacao) ctx.onFiltrarSituacao(f.id); });
+        barra.appendChild(trecho);
+      }
+      var item = document.createElement('div');
+      item.className = 'grade-segment-key';
+      item.innerHTML = '<i style="background:' + f.cor + '"></i><span>' + esc(f.rotulo) + '</span><b>' + f.valor + ' de ' + total + ' <small>· ' + percentual + '%</small></b>';
+      legendaBarra.appendChild(item);
+    });
+    barrasWrap.appendChild(barra);
+    barrasWrap.appendChild(legendaBarra);
     hero.appendChild(barrasWrap);
     el.appendChild(hero);
 
     Ch.gauge(meta.querySelector('.gauge-host'), {
       valor: sd.mediaGeral, max: 10, ref: ref, cor: corMedia, altura: h(158, ctx),
       aria: 'Média geral do aluno comparada à referência da escola'
-    });
-    Ch.hBars(barrasHost, {
-      itens: faixas.map(function (f) {
-        return {
-          id: f.id, rotulo: f.rotulo, valor: f.valor, cor: f.cor,
-          sub: total ? Math.round(f.valor / total * 100) + '% das disciplinas' : ''
-        };
-      }),
-      max: total, rowH: 46, labelW: 178,
-      fmt: function (v) { return v + ' de ' + total; },
-      aria: 'Distribuição das médias das disciplinas em relação à referência',
-      tooltip: function (it) {
-        return Ch.tipHTML(esc(it.rotulo), null, [
-          { rotulo: 'Disciplinas', valor: String(it.valor) },
-          { rotulo: 'Percentual', valor: Math.round(it.valor / total * 100) + '% das ' + total }
-        ]);
-      },
-      onRowClick: function (it) { if (ctx.onFiltrarSituacao) ctx.onFiltrarSituacao(it.id); }
     });
 
     /* ---------- cartões coloridos: crescimento / estável / queda ---------- */
@@ -351,7 +355,7 @@ window.Views = (function () {
      2b) Tabela interativa por disciplina (linhas tintadas por desempenho)
      -------------------------------------------------------------------------- */
   function tabelaDisciplinas(ctx) {
-    var sd = ctx.sd, cores = mapaCores(sd), cd = ctx.classData;
+    var sd = ctx.sd, cores = mapaCores(sd);
     var sec = C.secao('disciplinas-tabela', 'Visão por disciplina',
       'Cada linha resume uma disciplina. Toque em uma linha para focar a disciplina em todo o painel; as cores indicam a distância da referência (' + (REF != null ? f1(REF) : '—') + ').',
       { ajuda: 'Colunas: notas por bimestre (cinza = sem nota); média do ano com barra proporcional; variação entre o primeiro e o último período; oscilação (desvio-padrão entre bimestres); situação em relação à referência da escola. Toque em uma linha para focar a disciplina em todo o painel.' });
@@ -365,6 +369,7 @@ window.Views = (function () {
     var table = document.createElement('table');
     table.className = 'tabela-disciplinas';
     table.innerHTML = '<caption class="visually-hidden">Média, variação, oscilação e situação por disciplina</caption>' +
+      '<colgroup><col style="width:23%"><col style="width:21%"><col style="width:11%"><col style="width:13%"><col style="width:14%"><col style="width:18%"></colgroup>' +
       '<thead><tr><th scope="col">Disciplina</th><th scope="col">Notas por bimestre</th><th scope="col">Média</th>' +
       '<th scope="col">Variação</th><th scope="col">Oscilação</th><th scope="col">Situação</th></tr></thead>';
     var tbody = document.createElement('tbody');
@@ -384,17 +389,25 @@ window.Views = (function () {
       /* disciplina */
       var td1 = document.createElement('td');
       td1.className = 'cel-disciplina';
-      var av = C.avatar(m.apelido.replace(/[^A-Za-zÀ-Ú]/g, '').slice(0, 4), cores[m.nome] || '#dfe7f2', 'media');
-      av.classList.add('avatar-materia');
-      td1.appendChild(av);
+      var identidade = document.createElement('div');
+      identidade.className = 'discipline-identity';
+      var cor = document.createElement('span');
+      cor.className = 'discipline-swatch';
+      cor.style.background = cores[m.nome] || '#8090a4';
+      cor.setAttribute('aria-hidden', 'true');
+      identidade.appendChild(cor);
       var nome = document.createElement('div');
       nome.innerHTML = '<b>' + esc(m.rotulo) + '</b><span>' + esc(m.area) + '</span>';
-      td1.appendChild(nome);
+      identidade.appendChild(nome);
+      td1.appendChild(identidade);
       tr.appendChild(td1);
 
       /* notas por bimestre */
       var td2 = document.createElement('td');
       td2.className = 'cel-bimestres';
+      td2.setAttribute('data-label', 'Notas por bimestre');
+      var notas = document.createElement('div');
+      notas.className = 'bimestre-list';
       sd.bimestres.forEach(function (bi) {
         var s = m.serie.filter(function (x) { return x.bimestre === bi; })[0];
         var v = s ? s.nota : null;
@@ -407,13 +420,15 @@ window.Views = (function () {
             (s.mb != null ? ' · MB ' + f1(s.mb) : ' · MB não registrada') + (s.fa != null ? ' · faltas ' + f1(s.fa) : ''));
           p.tabIndex = 0;
         }
-        td2.appendChild(p);
+        notas.appendChild(p);
       });
+      td2.appendChild(notas);
       tr.appendChild(td2);
 
       /* média */
       var td3 = document.createElement('td');
       td3.className = 'cel-media';
+      td3.setAttribute('data-label', 'Média');
       var pctBar = Math.max(3, Math.round((m.media || 0) / 10 * 100));
       td3.innerHTML = '<b>' + f1(m.media) + '</b><span class="barra-media"><i style="width:' + pctBar + '%;background:' +
         (abaixo ? Ch.COR.coral : perto ? Ch.COR.ambar : Ch.COR.verde) + '"></i></span>';
@@ -421,22 +436,29 @@ window.Views = (function () {
 
       /* variação */
       var td4 = document.createElement('td');
+      td4.setAttribute('data-label', 'Variação');
       if (m.variacaoTotal != null) td4.appendChild(C.pillDelta(m.variacaoTotal, { limiar: LIM.estavelVariacao }));
       else td4.innerHTML = '<span class="hint">—</span>';
       tr.appendChild(td4);
 
       /* oscilação */
       var td5 = document.createElement('td');
-      var corOsc = m.oscilacao === 'alta' ? Ch.COR.coral : (m.oscilacao === 'moderada' ? Ch.COR.ambar : Ch.COR.verde);
-      var selo = C.selo(f1(m.dp), corOsc, A.Insights.rotuloOscilacao(m.oscilacao),
-        'Desvio-padrão ' + f1(m.dp) + ' · faixa de ' + f1(m.minimo) + ' a ' + f1(m.maximo) + ' — ' + A.Insights.rotuloOscilacao(m.oscilacao));
-      selo.classList.add('selo-' + (m.oscilacao || 'estavel'));
-      selo.tabIndex = 0;
-      td5.appendChild(selo);
+      td5.setAttribute('data-label', 'Oscilação');
+      var rotuloOsc = m.dp == null ? 'Sem dados' : A.Insights.rotuloOscilacao(m.oscilacao);
+      var oscilacao = document.createElement('span');
+      oscilacao.className = 'oscillation-pill ' + (m.oscilacao || 'sem-dados');
+      oscilacao.innerHTML = '<b>' + f1(m.dp) + '</b><small>' + esc(rotuloOsc) + '</small>';
+      if (m.dp != null) {
+        oscilacao.setAttribute('data-tip', 'Desvio-padrão ' + f1(m.dp) + ' · faixa de ' + f1(m.minimo) + ' a ' + f1(m.maximo) + ' — ' + rotuloOsc);
+        oscilacao.tabIndex = 0;
+      }
+      td5.appendChild(oscilacao);
       tr.appendChild(td5);
 
       /* situação */
       var td6 = document.createElement('td');
+      td6.className = 'cel-situacao';
+      td6.setAttribute('data-label', 'Situação');
       var sit = abaixo ? 'Abaixo da referência' : perto ? 'Na referência' : 'Acima da referência';
       var cls2 = abaixo ? 'sit-baixo' : perto ? 'sit-perto' : 'sit-acima';
       td6.innerHTML = '<span class="situacao ' + cls2 + '">' + sit + '</span>';
@@ -896,7 +918,20 @@ window.Views = (function () {
     });
 
     var host = document.createElement('div');
-    sec.body.appendChild(host);
+    if (ctx.meeting) {
+      var painel = document.createElement('div');
+      painel.className = 'meeting-map-layout';
+      var mapaNotas = document.createElement('div');
+      mapaNotas.className = 'meeting-map-notes';
+      mapaNotas.appendChild(host);
+      painel.appendChild(mapaNotas);
+      var graficoPadroes = padroes(ctx);
+      graficoPadroes.classList.add('meeting-patterns');
+      painel.appendChild(graficoPadroes);
+      sec.body.appendChild(painel);
+    } else {
+      sec.body.appendChild(host);
+    }
     Ch.heatmap(host, {
       colunas: cols.map(rbc), linhas: rows.map(function (m) {
         return {
@@ -1214,7 +1249,8 @@ window.Views = (function () {
   function padroes(ctx) {
     var sd = ctx.sd;
     var sec = C.secao('padroes', 'Explorar padrões',
-      'Cada ponto é uma disciplina: posição horizontal = média; vertical = oscilação entre bimestres. As quatro regiões são apenas descritivas — nenhuma é automaticamente boa ou ruim.',
+      ctx.meeting ? 'Cada ponto cruza a média da disciplina com sua oscilação entre bimestres.' :
+        'Cada ponto é uma disciplina: posição horizontal = média; vertical = oscilação entre bimestres. As quatro regiões são apenas descritivas — nenhuma é automaticamente boa ou ruim.',
       { ajuda: 'Quanto mais à direita o ponto, maior a média da disciplina; quanto mais acima, maior a oscilação entre bimestres. As linhas tracejadas marcam a média geral do aluno e a oscilação média. Os quatro quadrantes são apenas descritivos: nenhum é automaticamente bom ou ruim.' });
     var el = sec.el;
     var pts = sd.numericas.filter(function (m) { return m.media != null && m.dp != null; });
@@ -1227,7 +1263,8 @@ window.Views = (function () {
     var host = document.createElement('div');
     sec.body.appendChild(host);
     Ch.scatter(host, {
-      altura: h(340, ctx),
+      altura: ctx.meeting ? 330 : 340,
+      hideLabelsBelow: ctx.meeting ? 420 : 0,
       pontos: pts.map(function (m) {
         return { id: m.nome, rotulo: m.apelido, x: m.media, y: m.dp, cor: cores[m.nome], destaque: ctx.filtros.disciplina && A.norm(m.nome) === A.norm(ctx.filtros.disciplina) };
       }),
@@ -1253,6 +1290,16 @@ window.Views = (function () {
     legenda.innerHTML = '<span><b>Acima da média do aluno · mais estável</b></span><span><b>Acima da média do aluno · mais oscilante</b></span>' +
       '<span><b>Abaixo da média do aluno · mais estável</b></span><span><b>Abaixo da média do aluno · mais oscilante</b></span>';
     sec.body.appendChild(legenda);
+    if (ctx.meeting) {
+      var pontosLegenda = document.createElement('div');
+      pontosLegenda.className = 'pattern-point-key';
+      pts.forEach(function (m) {
+        var item = document.createElement('span');
+        item.innerHTML = '<i style="background:' + cores[m.nome] + '"></i>' + esc(m.rotulo);
+        pontosLegenda.appendChild(item);
+      });
+      sec.body.appendChild(pontosLegenda);
+    }
     return el;
   }
 

@@ -84,11 +84,43 @@ async function run() {
     }
     await page.locator('#f-aluno').selectOption(student);
     for (const id of studentSections) check(await page.locator('#' + id).count() === 1, 'student section ' + id);
+    check(await page.locator('#resumo .grade-segmented-bar').count() === 1, 'single segmented distribution bar');
+    check(await page.locator('#resumo .grade-segmented-legend .grade-segment-key').count() === 3, 'distribution legend shows three ranges');
+    if (width === 1440) {
+      const segmentSizing = await page.locator('#resumo .grade-segmented-bar').evaluate(bar => {
+        const parts = [...bar.querySelectorAll('.grade-segment')];
+        return parts.map(part => ({ actual: part.getBoundingClientRect().width / bar.getBoundingClientRect().width, count: Number(part.style.flexGrow) }));
+      });
+      const totalParts = segmentSizing.reduce((sum, part) => sum + part.count, 0);
+      check(segmentSizing.every(part => Math.abs(part.actual - part.count / totalParts) < .03), 'distribution segments reflect discipline proportions');
+    }
+    check(await page.locator('#disciplinas-tabela .discipline-swatch').count() > 0 && await page.locator('#disciplinas-tabela .avatar-materia').count() === 0, 'discipline names use legible color markers');
     await fit(page, 'student ' + width);
+    if (width === 390 || width === 1440) {
+      await page.locator('#resumo .kpi-hero').screenshot({ path: path.join(out, 'student-distribution-' + width + '.png') });
+      await page.locator('#disciplinas-tabela').screenshot({ path: path.join(out, 'student-disciplines-' + width + '.png') });
+    }
     if (width === 390 || width === 1440) await page.screenshot({ path: path.join(out, 'student-restored-' + width + '.png'), fullPage: true });
     await page.locator('#btn-reuniao').click();
+    check(await page.locator('#meeting-close').evaluate(el => getComputedStyle(el).backgroundColor === 'rgb(180, 35, 50)'), 'meeting exit button is red');
     for (let i = 0; i < 8; i++) {
       check(await page.locator('#meeting-body > *').count() > 0, 'meeting step has content');
+      if (i === 0) {
+        check(await page.locator('#meeting-body #resumo .grade-segmented-bar').count() === 1, 'meeting overview uses the same segmented bar');
+        if (width === 390 || width === 1440) await page.screenshot({ path: path.join(out, 'meeting-overview-' + width + '.png') });
+      }
+      if (i === 4) {
+        check(await page.locator('#meeting-body #mapa .meeting-patterns svg[role="img"]').count() === 1, 'meeting map includes patterns scatterplot');
+        if (width === 390) check(await page.locator('#meeting-body .meeting-patterns .pattern-point-key span').count() > 0, 'mobile scatter names points in a legend');
+        if (width === 390 || width === 1440) {
+          await page.locator('#meeting-body #mapa').evaluate(el => el.scrollIntoView({ block: 'start' }));
+          await page.screenshot({ path: path.join(out, 'meeting-map-' + width + '.png') });
+          if (width === 390) {
+            await page.locator('#meeting-body .meeting-patterns').evaluate(el => el.scrollIntoView({ block: 'start' }));
+            await page.screenshot({ path: path.join(out, 'meeting-patterns-mobile.png') });
+          }
+        }
+      }
       const overflow = await page.locator('#meeting').evaluate(el => el.scrollWidth > el.clientWidth + 2);
       check(!overflow, 'meeting fits ' + width + ' step ' + i);
       if (i < 7) await page.locator('#meeting-next').click();

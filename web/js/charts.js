@@ -717,20 +717,23 @@ window.Charts = (function () {
       }
 
       var occupied = [];
+      var showLabels = !opts.hideLabelsBelow || width >= opts.hideLabelsBelow;
       opts.pontos.forEach(function (p) {
         var g = el('g', { class: 'scatter-point', tabindex: '0', role: 'img', 'aria-label': p.rotulo + ': média ' + p.x + ', oscilação ' + p.y });
         g.appendChild(el('circle', { cx: X(p.x), cy: Y(p.y), r: p.destaque ? 8 : 6, fill: p.cor || '#2e5aa8', opacity: 0.85, stroke: '#fff', 'stroke-width': 1.5 }));
-        var lw = p.rotulo.length * 6 + 8, lx = Math.max(ml + lw / 2, Math.min(W - lw / 2 - 6, X(p.x)));
-        var ly = Y(p.y) - 14;
-        for (var attempt = 0; attempt < 20; attempt++) {
-          ly = Y(p.y) - 14 - attempt * 16;
-          if (ly < mt + 14) ly = Y(p.y) + 22 + attempt * 16;
-          var collision = occupied.some(function (b) { return Math.abs(b.x - lx) < (b.w + lw) / 2 && Math.abs(b.y - ly) < 15; });
-          if (!collision && ly < H - mb) break;
+        if (showLabels) {
+          var lw = p.rotulo.length * 6 + 8, lx = Math.max(ml + lw / 2, Math.min(W - lw / 2 - 6, X(p.x)));
+          var ly = Y(p.y) - 14;
+          for (var attempt = 0; attempt < 20; attempt++) {
+            ly = Y(p.y) - 14 - attempt * 16;
+            if (ly < mt + 14) ly = Y(p.y) + 22 + attempt * 16;
+            var collision = occupied.some(function (b) { return Math.abs(b.x - lx) < (b.w + lw) / 2 && Math.abs(b.y - ly) < 15; });
+            if (!collision && ly < H - mb) break;
+          }
+          occupied.push({ x: lx, y: ly, w: lw });
+          if (Math.abs(ly - Y(p.y)) > 18) g.appendChild(el('line', { x1: X(p.x), y1: Y(p.y), x2: lx, y2: ly + 3, stroke: '#b8abc7', 'stroke-width': 1 }));
+          g.appendChild(txt(lx, ly, p.rotulo, { class: 'g-point-label', 'text-anchor': 'middle', style: 'paint-order:stroke;stroke:#fff;stroke-width:3px;stroke-linejoin:round' }));
         }
-        occupied.push({ x: lx, y: ly, w: lw });
-        if (Math.abs(ly - Y(p.y)) > 18) g.appendChild(el('line', { x1: X(p.x), y1: Y(p.y), x2: lx, y2: ly + 3, stroke: '#b8abc7', 'stroke-width': 1 }));
-        g.appendChild(txt(lx, ly, p.rotulo, { class: 'g-point-label', 'text-anchor': 'middle', style: 'paint-order:stroke;stroke:#fff;stroke-width:3px;stroke-linejoin:round' }));
         if (opts.tooltip) {
           g.addEventListener('pointermove', function (e) { showTip(opts.tooltip(p), e.clientX, e.clientY); });
           g.addEventListener('focus', function () { var r = g.getBoundingClientRect(); showTip(opts.tooltip(p), r.left, r.top); });

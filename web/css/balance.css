@@ -15,8 +15,36 @@
 .kpi { padding: clamp(18px, 2vw, 24px); }
 .kpi-lista { overflow-wrap: anywhere; }
 .kpi-hero { grid-template-columns: minmax(0, 1.05fr) minmax(0, 1fr); }
+.kpi-hero-barras { align-self: center; padding-right: 0; }
+.grade-segmented-bar { display: flex; width: 100%; height: 40px; overflow: hidden; border-radius: 12px; background: #e9edf1; }
+.grade-segment { min-width: 0; flex-basis: 0; border: 0; border-right: 2px solid rgba(255, 255, 255, .85); cursor: pointer; transition: filter .15s ease; }
+.grade-segment:last-child { border-right: 0; }
+.grade-segment:hover, .grade-segment:focus-visible { filter: brightness(.9); }
+.grade-segment:focus-visible { outline: 3px solid var(--tinta); outline-offset: -4px; }
+.grade-segmented-legend { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 10px; margin-top: 14px; }
+.grade-segment-key { display: grid; grid-template-columns: 9px minmax(0, 1fr); gap: 2px 7px; align-content: start; min-width: 0; }
+.grade-segment-key i { grid-row: 1 / 3; width: 9px; height: 9px; margin-top: 4px; border-radius: 50%; }
+.grade-segment-key span { color: var(--tinta-2); font-size: 11px; line-height: 1.3; }
+.grade-segment-key b { grid-column: 2; font-size: 13px; font-variant-numeric: tabular-nums; }
+.grade-segment-key small { color: var(--tinta-3); font-size: 11px; font-weight: 600; }
 .stat-strip { grid-template-columns: repeat(auto-fit, minmax(min(100%, 180px), 1fr)); }
 .tabela-wrap, .heat-wrap, .details .card-body { overflow-x: auto; max-width: 100%; overscroll-behavior-x: contain; }
+.tabela-disciplinas { min-width: 940px; table-layout: fixed; }
+.tabela-disciplinas tbody td { padding: 14px 10px; vertical-align: middle; }
+.tabela-disciplinas .cel-disciplina, .tabela-disciplinas .cel-bimestres { display: table-cell; min-width: 0; }
+.tabela-disciplinas .discipline-identity { display: flex; flex-direction: row; align-items: center; gap: 11px; min-width: 0; }
+.tabela-disciplinas .discipline-identity > div { display: flex; flex-direction: column; min-width: 0; }
+.discipline-swatch { display: block; flex: 0 0 9px; width: 9px; height: 34px; border-radius: 999px; }
+.tabela-disciplinas .bimestre-list { display: flex; justify-content: center; gap: 5px; flex-wrap: wrap; }
+.tabela-disciplinas .pill-nota { min-width: 40px; }
+.tabela-disciplinas .cel-situacao { text-align: center; }
+.tabela-disciplinas .situacao { max-width: 100%; white-space: normal; text-align: left; }
+.oscillation-pill { display: inline-flex; flex-direction: column; align-items: center; min-width: 106px; padding: 6px 9px; border-radius: 11px; background: #edf4e8; color: #2c5c12; line-height: 1.25; }
+.oscillation-pill b { font-size: 14px; font-variant-numeric: tabular-nums; }
+.oscillation-pill small { font-size: 10px; font-weight: 700; }
+.oscillation-pill.moderada { background: #fff1d9; color: #7a5108; }
+.oscillation-pill.alta { background: #fde8e3; color: #82331f; }
+.oscillation-pill.sem-dados { background: #eef1f4; color: var(--tinta-3); }
 .chart-host, .card-body svg[role="img"] { max-width: 100%; }
 .tooltip { max-width: min(320px, calc(100vw - 20px)); }
 .nav-tab, .btn, .dd-btn { min-height: 40px; }
@@ -114,6 +142,17 @@
 .cohort-dist-key-median { border-left: 3px solid #435d95; width: 4px !important; }
 .cohort-dist-key-ref { border-left: 1.5px dashed #aa781e; width: 4px !important; }
 
+.meeting #meeting-close { background: #b42332; color: #fff; border: 1px solid rgba(255, 255, 255, .28); box-shadow: 0 4px 14px rgba(60, 10, 30, .22); }
+.meeting #meeting-close:hover { background: #941d2a; }
+.meeting #meeting-close:focus-visible { outline: 3px solid #fff; outline-offset: 2px; }
+.meeting-map-layout { display: grid; grid-template-columns: minmax(0, 1.04fr) minmax(0, .96fr); gap: 24px; align-items: start; }
+.meeting-map-notes { min-width: 0; overflow-x: auto; }
+.meeting .meeting-patterns { min-width: 0; margin: 0; padding: 0 0 0 24px; border-left: 1px solid var(--linha); border-radius: 0; box-shadow: none; }
+.meeting .meeting-patterns .card-title { font-size: 19px; }
+.meeting .meeting-patterns .card-desc { margin-bottom: 10px; }
+.meeting .meeting-patterns svg { max-width: 100%; height: auto; }
+.pattern-point-key { display: none; }
+
 @media (max-width: 1180px) {
   .topbar { grid-template-columns: minmax(0, 1fr) auto; }
   .topbar .filterbar { grid-column: 1 / -1; grid-row: 2; width: 100%; padding-bottom: 2px; }
@@ -121,6 +160,8 @@
   .grid-2 { grid-template-columns: 1fr; }
 }
 @media (max-width: 980px) {
+  .meeting-map-layout { grid-template-columns: minmax(0, 1fr); }
+  .meeting .meeting-patterns { padding: 20px 0 0; border-left: 0; border-top: 1px solid var(--linha); }
   .cohort-comparison { grid-template-columns: minmax(0, 1fr); }
   .cohort-comparison > .card + .card { border-left: 0; border-top: 1px solid var(--linha); padding: 22px 0 0; }
   .cohort-comparison .card-desc { min-height: 0; }
@@ -139,7 +180,31 @@
   .meeting-foot-centro { min-width: 0; }
   .meeting-progress { gap: 6px; }
 }
+@media (max-width: 700px) {
+  .meeting .meeting-patterns .quadrantes { display: none; }
+  .meeting .meeting-patterns .pattern-point-key { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 7px 10px; margin-top: 12px; }
+  .pattern-point-key span { display: inline-flex; align-items: center; gap: 7px; min-width: 0; font-size: 11px; color: var(--tinta-2); }
+  .pattern-point-key i { width: 9px; height: 9px; border-radius: 50%; flex: 0 0 9px; }
+  #disciplinas-tabela .tabela-wrap { overflow: visible; }
+  .tabela-disciplinas { display: block; min-width: 0; width: 100%; }
+  .tabela-disciplinas colgroup { display: none; }
+  .tabela-disciplinas thead { position: absolute; width: 1px; height: 1px; overflow: hidden; clip: rect(0 0 0 0); white-space: nowrap; }
+  .tabela-disciplinas tbody { display: grid; gap: 11px; }
+  .tabela-disciplinas tbody tr { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 12px 14px; padding: 14px; border-radius: 16px; }
+  .tabela-disciplinas tbody td, .tabela-disciplinas .cel-disciplina, .tabela-disciplinas .cel-bimestres { display: block; min-width: 0; padding: 0 !important; border-radius: 0 !important; text-align: left !important; }
+  .tabela-disciplinas tbody td::before { content: attr(data-label); display: block; margin-bottom: 5px; color: var(--tinta-3); font-size: 10px; font-weight: 800; letter-spacing: .06em; text-transform: uppercase; }
+  .tabela-disciplinas tbody td.cel-disciplina { grid-column: 1 / -1; padding-bottom: 10px !important; border-bottom: 1px solid rgba(40, 50, 60, .11); }
+  .tabela-disciplinas tbody td.cel-disciplina::before { display: none; }
+  .tabela-disciplinas tbody td.cel-bimestres { grid-column: 1 / -1; }
+  .tabela-disciplinas .bimestre-list { justify-content: flex-start; }
+  .tabela-disciplinas .cel-media .barra-media { display: block; }
+  .tabela-disciplinas .oscillation-pill { align-items: flex-start; }
+}
 @media (max-width: 600px) {
+  .grade-segmented-legend { grid-template-columns: minmax(0, 1fr); gap: 6px; }
+  .grade-segment-key { display: flex; align-items: center; gap: 8px; }
+  .grade-segment-key i { flex: 0 0 9px; margin: 0; }
+  .grade-segment-key b { margin-left: auto; white-space: nowrap; }
   .shell { width: calc(100% - 20px); margin-top: 132px; padding: 18px 12px 140px; }
   .topbar { padding: 10px 12px; }
   .topbar .brand { min-width: 0; }
