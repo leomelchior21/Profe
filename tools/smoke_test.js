@@ -42,10 +42,19 @@ function check(nome, cond, extra) {
 const op = A.Store.opcoes({});
 console.log('Opções:', op.turmas.join(', '), '| alunos:', op.alunos.length, '| bimestres:', op.bimestres.join(','), '| disciplinas numéricas:', op.materiasNumericas.length);
 
-check('106 alunos indexados', A.Store.alunosDoEscopo({}).length === 106, String(A.Store.alunosDoEscopo({}).length));
+check('196 alunos indexados', A.Store.alunosDoEscopo({}).length === 196, String(A.Store.alunosDoEscopo({}).length));
+check('106 alunos dos nonos preservados', A.Store.alunosDoEscopo({ ano: '9' }).length === 106);
+check('turmas dos sétimos disponíveis', JSON.stringify(A.Store.opcoes({ ano: '7' }).turmas) === '["7A","7B","7C"]');
+for (const [turma, total] of [['7A', 29], ['7B', 31], ['7C', 30]]) {
+  check(turma + ': ' + total + ' alunos', A.Store.alunosDoEscopo({ turma }).length === total);
+}
+const seventhRecords = sandbox.window.SCHOOL_DATA.registros.filter(r => r.ano === '7');
+check('sétimos usam somente MB nas comparações', seventhRecords.length > 0 && seventhRecords.every(r => r.nota === r.mb));
+check('parciais sem MB permanecem sem nota', seventhRecords.some(r => r.avaliacoes_origem.NP && r.mb == null && r.nota == null));
+check('sétimos não inventam frequência', seventhRecords.every(r => r.fa == null && r.fr == null));
 
 /* aluno típico */
-const ra = op.alunos[0].ra;
+const ra = A.Store.opcoes({ ano: '9' }).alunos[0].ra;
 const sd = A.Store.studentData(ra, {});
 check('studentData tem disciplinas numéricas', sd && sd.numericas.length >= 8, String(sd && sd.numericas.length));
 check('média geral dentro de 0-10', sd.mediaGeral > 0 && sd.mediaGeral <= 10, String(sd.mediaGeral));
@@ -70,7 +79,7 @@ check('monitoramento <= 6 e sem disciplina repetida', (function () {
 })());
 check('distribuição da coorte com box e n', (function () {
   const d = A.Store.cohortDistribution({});
-  return d.length === 4 && d.every((c) => c.box && c.box.n > 0 && c.box.q1 <= c.box.mediana && c.box.q3 >= c.box.mediana);
+  return d.length === 7 && d.every((c) => c.box && c.box.n > 0 && c.box.q1 <= c.box.mediana && c.box.q3 >= c.box.mediana);
 })());
 
 const semNota = sd.materias.filter((m) => m.semNota);
@@ -95,12 +104,12 @@ check('aluno presente na distribuição', ctx.aluno != null);
 
 /* coorte */
 const coorte = A.Store.cohort({});
-check('4 turmas', coorte.length === 4, coorte.map((c) => c.turma).join(','));
+check('7 turmas', coorte.length === 7, coorte.map((c) => c.turma).join(','));
 check('medianas plausíveis', coorte.every((c) => c.medianaMedia == null || (c.medianaMedia >= 0 && c.medianaMedia <= 10)));
 const med = A.Store.cohortSubjectMedians({}, null);
-check('mediana disciplina x turma', med.rows.length >= 8 && med.turmas.length === 4, med.rows.length + 'x' + med.turmas.length);
+check('mediana disciplina x turma', med.rows.length >= 8 && med.turmas.length === 7, med.rows.length + 'x' + med.turmas.length);
 const evo = A.Store.cohortEvolution({});
-check('evolução da coorte', evo.series.length === 4 && evo.series[0].serie.length === 3);
+check('evolução da coorte', evo.series.length === 7 && evo.series.every(s => s.serie.length === 3));
 
 /* aluno transferido sem notas */
 const transferido = A.Store.alunosDoEscopo({}).find((a) => a.status === 'Transferido');

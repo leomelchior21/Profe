@@ -58,7 +58,7 @@ window.CONFIG = {
     },
     {
       nome: 'Ciências da Natureza',
-      disciplinas: ['Física', 'Química', 'Biologia']
+      disciplinas: ['Ciências', 'Física', 'Química', 'Biologia']
     },
     {
       nome: 'Ciências Humanas',
@@ -69,7 +69,7 @@ window.CONFIG = {
   /* Disciplinas avaliadas sem nota numérica (aparecem como chips informativos,
      nunca como barras/linhas numéricas). Comparadas sem acentos. */
   disciplinasSemNota: [
-    'Maker : Inovação e Criação', 'Música', 'Teatro',
+    'Artes Visuais', 'Maker : Inovação e Criação', 'Música', 'Teatro',
     'Educação Física', 'Orientação Educacional', 'Projeto de Vida'
   ],
 
@@ -78,6 +78,8 @@ window.CONFIG = {
     'Língua Portuguesa': 'Língua Portuguesa',
     'Produção de Texto': 'Produção de Texto',
     'Matemática': 'Matemática',
+    'Ciências': 'Ciências',
+    'Artes Visuais': 'Artes Visuais',
     'Química': 'Química',
     'Física': 'Física',
     'Biologia': 'Biologia',

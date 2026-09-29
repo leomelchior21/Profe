@@ -49,6 +49,17 @@ async function run() {
   await page.locator('#login-submit').click();
   await page.locator('#app').waitFor({ state: 'visible' });
   await page.locator('#coorte-resumo').waitFor();
+  check(await page.locator('#f-ano option[value="7"]').count() === 1, 'seventh grade is available');
+  await page.locator('#f-ano').selectOption('7');
+  check(JSON.stringify(await page.locator('#f-turma option').evaluateAll(ops => ops.slice(1).map(o => o.value))) === '["7A","7B","7C"]', 'grade filter shows only seventh-grade classes');
+  for (const [turma, total] of [['7A', 29], ['7B', 31], ['7C', 30]]) {
+    await page.locator('#f-turma').selectOption(turma);
+    check(await page.locator('#f-aluno option').count() === total + 1, turma + ' student count');
+    await page.locator('#f-aluno').selectOption({ index: 1 });
+    check(await page.locator('#aluno h1').count() === 1, turma + ' student renders');
+    check((await page.locator('#disciplinas-tabela').textContent()).includes('Ciências'), turma + ' includes science');
+  }
+  await page.locator('#btn-limpar').click();
   await page.waitForTimeout(200);
   for (const [id, label] of [['f-aluno', 'Alunos'], ['f-turma', 'Turmas'], ['f-disciplina', 'Disciplinas'], ['f-bimestre', 'Bimestres'], ['f-ano', 'Anos']]) {
     check(await page.locator('#' + id + ' + .dd .dd-btn').textContent() === label, label + ' filter has concise placeholder');
@@ -75,7 +86,7 @@ async function run() {
     await page.locator('#btn-limpar').click();
     if (width <= 390) check(await page.locator('.filterbar').evaluate(el => el.scrollLeft === 0), 'mobile filters return to first field after reset');
     for (const id of cohortSections) check(await page.locator('#' + id).count() === 1, 'cohort section ' + id);
-    check(await page.locator('#coorte-resumo .accent .kpi-turma-badge').count() === 4, 'class cards show class badges');
+    check(await page.locator('#coorte-resumo .accent .kpi-turma-badge').count() === 7, 'class cards show class badges');
     check(await page.locator('#coorte-resumo .accent .avatar').count() === 0, 'class cards no longer show letter avatars');
     check(await page.locator('#coorte-resumo .accent').first().evaluate(card => {
       const help = card.querySelector('.kpi-help-canto').getBoundingClientRect();
@@ -99,7 +110,11 @@ async function run() {
       const a = el.getBoundingClientRect(), b = el.closest('.student-head').getBoundingClientRect();
       return Math.abs((a.left + a.right - b.left - b.right) / 2) < 2;
     }), 'student identity centered at ' + width);
-    check(await page.locator('#aluno .student-facts .fact').count() >= 3, 'student quick facts grouped below identity');
+    const expectedFacts = await page.evaluate(ra => {
+      const sd = window.Analytics.Store.studentData(ra, {});
+      return 2 + Number(sd.frequenciaMedia != null) + Number(sd.faltasTotais != null);
+    }, student);
+    check(await page.locator('#aluno .student-facts .fact').count() === expectedFacts, 'student quick facts show only available data');
     check(await page.locator('#aluno .student-switch-prev').isDisabled(), 'first student has no previous button');
     const nextStudent = await page.locator('#f-aluno option').nth(2).getAttribute('value');
     await page.locator('#aluno .student-switch-next').click();
