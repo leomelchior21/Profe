@@ -39,15 +39,15 @@
     <nav class="filterbar" aria-label="Filtros do painel">
       <div class="filter filter-aluno">
         <label for="f-aluno">Aluno</label>
-        <select id="f-aluno"></select>
+        <select id="f-aluno" data-empty-label="Alunos"></select>
       </div>
       <div class="filter">
         <label for="f-turma">Turma</label>
-        <select id="f-turma"></select>
+        <select id="f-turma" data-empty-label="Turmas"></select>
       </div>
       <div class="filter">
         <label for="f-disciplina">Disciplina</label>
-        <select id="f-disciplina"></select>
+        <select id="f-disciplina" data-empty-label="Disciplinas"></select>
       </div>
       <div class="filter">
         <label for="f-bimestre">Bimestre</label>
@@ -140,5 +140,6 @@
 <script src="js/views.js"></script>
 <script src="js/app.js"></script>
 <script src="js/auth.js"></script>
+<script type="module" src="js/analytics-init.js"></script>
 </body>
 </html>

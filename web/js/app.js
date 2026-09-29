@@ -164,27 +164,27 @@
     var op1 = A.Store.opcoes({ anoLetivo: state.filtros.anoLetivo });
     state.filtros.ano = preencherSelect($('f-ano'),
       op1.anos.map(function (y) { return { valor: String(y), rotulo: y + 'º ano' }; }),
-      state.filtros.ano, 'Todos os anos');
+      state.filtros.ano, 'Anos');
 
     var op2 = A.Store.opcoes({ anoLetivo: state.filtros.anoLetivo, ano: state.filtros.ano });
     state.filtros.turma = preencherSelect($('f-turma'),
       op2.turmas.map(function (t) { return { valor: t, rotulo: 'Turma ' + t }; }),
-      state.filtros.turma, 'Todas as turmas');
+      state.filtros.turma, 'Turmas');
 
     var op3 = A.Store.opcoes({ anoLetivo: state.filtros.anoLetivo, ano: state.filtros.ano, turma: state.filtros.turma });
     var alunosItens = op3.alunos.map(function (a) { return { valor: a.ra, rotulo: a.nome + '  ·  ' + a.turma }; });
     var permitidos = {};
     op3.alunos.forEach(function (a) { permitidos[a.ra] = 1; });
     if (state.filtros.aluno && !permitidos[state.filtros.aluno]) state.filtros.aluno = '';
-    state.filtros.aluno = preencherSelect($('f-aluno'), alunosItens, state.filtros.aluno, 'Selecione um aluno…');
+    state.filtros.aluno = preencherSelect($('f-aluno'), alunosItens, state.filtros.aluno, 'Alunos');
 
     state.filtros.disciplina = preencherSelect($('f-disciplina'),
       op3.materiasNumericas.map(function (m) { return { valor: m.nome, rotulo: m.rotulo }; }),
-      state.filtros.disciplina, 'Todas as disciplinas');
+      state.filtros.disciplina, 'Disciplinas');
 
     state.filtros.bimestre = preencherSelect($('f-bimestre'),
       op3.bimestres.map(function (b) { return { valor: String(b), rotulo: A.rotuloBimestre(b) }; }),
-      state.filtros.bimestre, 'Todos os bimestres');
+      state.filtros.bimestre, 'Bimestres');
 
     $('f-aluno').classList.toggle('destaque-filtro', !!state.filtros.aluno);
 

@@ -9,3 +9,4 @@ Thumbs.db
 data/
 source/
 web/js/dados.js
+web/js/vendor/vercel-analytics.js

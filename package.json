@@ -2,11 +2,17 @@
   "name": "profe-painel",
   "private": true,
   "scripts": {
+    "build": "node tools/build_analytics.js",
+    "prestart": "npm run build",
     "start": "node tools/serve.js",
+    "pretest": "npm run build",
     "test": "node tools/smoke_test.js && node tools/ui_test.js",
     "protect": "node tools/protect_data.js"
   },
   "devDependencies": {
     "@playwright/test": "^1.58.0"
+  },
+  "dependencies": {
+    "@vercel/analytics": "^2.0.1"
   }
 }

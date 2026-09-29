@@ -1469,10 +1469,11 @@ window.Views = (function () {
       card.setAttribute('data-tip', 'Mediana da ' + rc.medida + rc.periodo + ' na turma, frequência média registrada e recuperações.' +
         (rc.rotulo ? ' Recorte: ' + rc.rotulo + '.' : '') + ' Toque para filtrar esta turma.');
       var abaixo = ref != null && c.medianaMedia != null && c.medianaMedia < ref;
-      card.innerHTML = C.avatar('Turma ' + c.turma, 'rgba(255,255,255,.28)', 'media kpi-canto').outerHTML +
+      var situacao = c.medianaMedia == null ? 'Sem notas no recorte' : ref == null ? 'Mediana da turma' : abaixo ? 'Abaixo da referência' : 'Na referência ou acima';
+      card.innerHTML = '<span class="kpi-turma-badge" aria-hidden="true">' + esc(c.turma) + '</span>' +
         '<span class="kpi-help-canto card-help" aria-hidden="true">?</span>' +
         '<span class="kpi-valor">' + (c.medianaMedia == null ? '—' : f1(c.medianaMedia)) + '</span>' +
-        '<span class="kpi-rotulo">Turma ' + esc(c.turma) + (abaixo ? ' · abaixo da referência' : ref != null ? ' · na referência ou acima' : '') + '</span>' +
+        '<span class="kpi-rotulo">' + situacao + '</span>' +
         '<span class="kpi-sub">' + c.nComNota + ' de ' + c.nAlunos + ' alunos com nota' +
         (c.frequenciaMedia != null ? ' · frequência no boletim ' + pct(c.frequenciaMedia) : '') + '</span>' +
         '<span class="kpi-lista">' + c.recuperacoes + ' recuperações' + (c.faixa != null ? ' · faixa ' + f1(c.faixa) : '') + '</span>';
@@ -1480,7 +1481,7 @@ window.Views = (function () {
         var sel = document.getElementById('f-turma');
         if (sel) { sel.value = c.turma; sel.dispatchEvent(new Event('change')); }
       });
-      card.setAttribute('aria-label', 'Filtrar a turma ' + c.turma);
+      card.setAttribute('aria-label', 'Turma ' + c.turma + ', mediana ' + f1(c.medianaMedia) + ', ' + situacao + '. Filtrar esta turma.');
       el.appendChild(card);
     });
     return el;

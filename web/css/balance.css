@@ -14,6 +14,9 @@
 .kpi-colors, .insight-grid { grid-template-columns: repeat(auto-fit, minmax(min(100%, 220px), 1fr)); }
 .kpi { padding: clamp(18px, 2vw, 24px); }
 .kpi-lista { overflow-wrap: anywhere; }
+.kpi-colors .kpi-turma-badge { position: absolute; top: 17px; right: 18px; display: grid; place-items: center; min-width: 48px; height: 35px; padding: 0 9px; border: 1px solid rgba(255, 255, 255, .38); border-radius: 12px; background: rgba(255, 255, 255, .4); color: #17202a; font-size: 14px; font-weight: 900; letter-spacing: -.02em; font-variant-numeric: tabular-nums; }
+.kpi-colors .accent .kpi-help-canto { top: auto; bottom: 17px; right: 18px; width: 20px; height: 20px; background: rgba(255, 255, 255, .62); }
+.kpi-colors .accent .kpi-lista { padding-right: 28px; }
 .student-head { padding: 10px 0 4px; }
 .student-head-grid { display: grid; grid-template-columns: 62px minmax(0, 1fr) 62px; align-items: center; gap: clamp(8px, 2vw, 24px); }
 .student-head-main { min-width: 0; text-align: center; }

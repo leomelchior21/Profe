@@ -39,6 +39,7 @@ async function run() {
   check(await page.evaluate(() => !window.SCHOOL_DATA), 'no cleartext data before login');
   check((await page.request.get('http://localhost:' + port + '/js/dados.js')).status() === 404, 'no public cleartext dataset');
   check((await page.request.get('http://localhost:' + port + '/data/dados.js')).status() === 404, 'private data inaccessible');
+  check((await page.request.get('http://localhost:' + port + '/js/vendor/vercel-analytics.js')).status() === 200, 'installed analytics package is served from the static build');
   await page.screenshot({ path: path.join(out, 'login-desktop.png'), fullPage: true });
   await page.locator('#password').fill('incorrect');
   await page.locator('#login-submit').click();
@@ -49,8 +50,10 @@ async function run() {
   await page.locator('#app').waitFor({ state: 'visible' });
   await page.locator('#coorte-resumo').waitFor();
   await page.waitForTimeout(200);
-  check(await page.locator('#f-bimestre + .dd .dd-btn').textContent() === 'Bimestres', 'bimester filter names its contents');
-  check(await page.locator('#f-ano + .dd .dd-btn').textContent() === 'Anos', 'school year filter names its contents');
+  for (const [id, label] of [['f-aluno', 'Alunos'], ['f-turma', 'Turmas'], ['f-disciplina', 'Disciplinas'], ['f-bimestre', 'Bimestres'], ['f-ano', 'Anos']]) {
+    check(await page.locator('#' + id + ' + .dd .dd-btn').textContent() === label, label + ' filter has concise placeholder');
+    check(await page.locator('#' + id + ' option').first().textContent() === label, label + ' reset option has concise name');
+  }
   check(await page.locator('.filterbar #f-ano-letivo').count() === 0 && await page.locator('#f-ano-letivo').isHidden(), 'academic year removed from header');
   check(await page.locator('#view').evaluate(el => getComputedStyle(el).outlineStyle === 'none'), 'main region has no startup focus ring');
   check(await page.locator('#view > .banner').count() === 0, 'cohort banner removed');
@@ -72,6 +75,13 @@ async function run() {
     await page.locator('#btn-limpar').click();
     if (width <= 390) check(await page.locator('.filterbar').evaluate(el => el.scrollLeft === 0), 'mobile filters return to first field after reset');
     for (const id of cohortSections) check(await page.locator('#' + id).count() === 1, 'cohort section ' + id);
+    check(await page.locator('#coorte-resumo .accent .kpi-turma-badge').count() === 4, 'class cards show class badges');
+    check(await page.locator('#coorte-resumo .accent .avatar').count() === 0, 'class cards no longer show letter avatars');
+    check(await page.locator('#coorte-resumo .accent').first().evaluate(card => {
+      const help = card.querySelector('.kpi-help-canto').getBoundingClientRect();
+      const box = card.getBoundingClientRect();
+      return help.bottom <= box.bottom && help.top > box.top + box.height / 2;
+    }), 'class card help sits in lower right');
     const columns = await page.locator('.cohort-comparison').evaluate(el => getComputedStyle(el).gridTemplateColumns.split(' ').length);
     check(columns === (width > 980 ? 2 : 1), 'cohort comparison columns at ' + width);
     await fit(page, 'cohort ' + width);

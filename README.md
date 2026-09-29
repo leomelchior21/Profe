@@ -4,9 +4,9 @@ Painel local de leitura pedagógica dos boletins, com visão coletiva, acompanha
 
 ## Abrir
 
-Com Node.js instalado, execute `npm start` e abra **http://127.0.0.1:4173**. O servidor publica somente a pasta `web/`. Também é possível hospedar essa pasta em um serviço estático com HTTPS.
+Com Node.js instalado, execute `npm install`, depois `npm start`, e abra **http://127.0.0.1:4173**. O servidor publica somente a pasta `web/`. Para outra hospedagem estática com HTTPS, execute `npm run build` antes de publicar `web/`.
 
-A senha de acesso é a definida para a escola. Ela desbloqueia o dataset criptografado no navegador. Recarregar ou clicar em **Bloquear** encerra o acesso. Não há armazenamento da senha ou do dataset descriptografado em localStorage/sessionStorage.
+A senha de acesso é a definida para a escola. Ela desbloqueia o dataset criptografado no navegador. Recarregar ou clicar em **Sair** encerra o acesso. Não há armazenamento da senha ou do dataset descriptografado em localStorage/sessionStorage.
 
 ## Organização
 
@@ -30,9 +30,13 @@ Média individual e mediana da turma são medidas distintas. As sugestões são 
 
 O pacote público usa AES-256-GCM, com chave derivada por PBKDF2-SHA-256 (600.000 iterações), salt e IV aleatórios. A senha não está no JavaScript público. O acesso depende de Web Crypto (HTTPS, localhost ou navegador compatível com arquivos locais). A senha é compartilhada: não há contas individuais, revogação de sessões ou limite de tentativas no servidor. Quem já conhece a senha pode copiar os dados desbloqueados. Ao mudar a senha, gere novamente o pacote protegido.
 
+## Vercel Analytics
+
+O build copia o módulo do pacote `@vercel/analytics` para `web/js/vendor/`. Em produção, ele registra visitas à página; nomes e notas de alunos não são incluídos na URL. Para receber os eventos, ative **Web Analytics** no projeto da Vercel e publique uma nova implantação. Em localhost, a coleta fica desligada.
+
 ## Verificar
 
-`npm install` instala apenas as dependências de teste; o site não depende delas.
+`npm install` instala as dependências de teste e o pacote do Vercel Analytics usado pelo build.
 
 - `node tools/smoke_test.js`: cálculos, lacunas, recuperação, turmas e insights. Sem os arquivos privados locais, defina `PANEL_PASSWORD` para testar o pacote criptografado.
 - Defina `$env:PANEL_PASSWORD` e execute `npm test`: testes analíticos e de navegador. Se necessário, execute `npx playwright install chromium` antes.
