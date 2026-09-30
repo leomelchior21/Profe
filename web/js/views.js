@@ -576,7 +576,7 @@ window.Views = (function () {
     var bimestres = sd.bimestres;
     var sec = C.secao('trajetoria', 'Trajetória ao longo do ano',
       'Cada linha é uma disciplina. Disciplinas em destaque aparecem coloridas; as demais ficam esmaecidas. Clique nos nomes para destacar, esmaecer ou ocultar.',
-      { ajuda: 'Cada linha é uma disciplina ao longo dos bimestres; a linha escura é a média geral. Use "Selecionar todas" para destacar todas, "Destaques" para voltar à seleção automática (maiores e menores médias e maiores variações) e os nomes abaixo do gráfico para alternar entre normal, destaque e oculta.' });
+      { ajuda: 'Cada linha é uma disciplina ao longo dos bimestres; a linha escura é a média geral. Use "Selecionar todas" para destacar todas, "Destaques" para voltar à seleção automática (maiores e menores médias e maiores variações) e os nomes da legenda para alternar entre normal, destaque e oculta.' });
     var el = sec.el;
     el.classList.add('card-wide');
 
@@ -611,6 +611,16 @@ window.Views = (function () {
     legenda.className = 'legend';
     legenda.id = 'traj-legenda';
 
+    var layout = document.createElement('div');
+    layout.className = 'traj-layout';
+    var controles = document.createElement('div');
+    controles.className = 'traj-controls';
+    var visual = document.createElement('div');
+    visual.className = 'traj-visual';
+    layout.appendChild(controles);
+    layout.appendChild(visual);
+    sec.body.appendChild(layout);
+
     /* atalhos: selecionar todas / destaques */
     var acoes = document.createElement('div');
     acoes.className = 'traj-actions';
@@ -641,18 +651,18 @@ window.Views = (function () {
     });
     acoes.appendChild(btTodas);
     acoes.appendChild(btDest);
-    sec.body.appendChild(acoes);
-    sec.body.appendChild(legenda);
+    controles.appendChild(acoes);
+    controles.appendChild(legenda);
     atualizarAcoes();
 
     var host = document.createElement('div');
     host.className = 'chart-host';
-    sec.body.appendChild(host);
+    visual.appendChild(host);
 
     var dica = document.createElement('p');
     dica.className = 'hint';
     dica.textContent = 'Dica: cada clique alterna entre esmaecida → destacada → oculta. Use as setas do teclado para percorrer os bimestres.';
-    sec.body.appendChild(dica);
+    visual.appendChild(dica);
 
     function seriesAtuais() {
       var ss = [];

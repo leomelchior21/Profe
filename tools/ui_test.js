@@ -178,6 +178,14 @@ async function run() {
       check(segmentSizing.every(part => Math.abs(part.actual - part.count / totalParts) < .03), 'distribution segments reflect discipline proportions');
     }
     check(await page.locator('#disciplinas-tabela .discipline-swatch').count() > 0 && await page.locator('#disciplinas-tabela .avatar-materia').count() === 0, 'discipline names use legible color markers');
+    if (width === 1440 || width === 390) {
+      const trajectoryLayout = await page.locator('#trajetoria').evaluate(section => {
+        const controls = section.querySelector('.traj-controls').getBoundingClientRect();
+        const chart = section.querySelector('.traj-visual').getBoundingClientRect();
+        return { controls: { left: controls.left, right: controls.right, bottom: controls.bottom }, chart: { left: chart.left, top: chart.top } };
+      });
+      check(width === 1440 ? trajectoryLayout.controls.right < trajectoryLayout.chart.left : trajectoryLayout.controls.bottom < trajectoryLayout.chart.top, 'trajectory controls sit beside the chart on desktop and above it on mobile');
+    }
     await fit(page, 'student ' + width);
     if (width === 390 || width === 1440) {
       await page.locator('#aluno').screenshot({ path: path.join(out, 'student-header-' + width + '.png') });

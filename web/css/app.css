@@ -738,6 +738,19 @@ button.kpi:hover { transform: translateY(-3px); box-shadow: 0 16px 34px rgba(16,
 
 /* atalhos da trajetÃ³ria: selecionar todas / destaques */
 .traj-actions { display: flex; gap: 8px; flex-wrap: wrap; margin-bottom: 12px; }
+.traj-layout { display: grid; grid-template-columns: 210px minmax(0, 1fr); gap: 24px; align-items: start; }
+.traj-controls { min-width: 0; padding-right: 16px; border-right: 1px solid var(--linha); }
+.traj-controls .traj-actions, .traj-controls .legend { display: flex; flex-direction: column; align-items: stretch; }
+.traj-controls .toggle-chip, .traj-controls .legend-chip { width: 100%; text-align: left; }
+.traj-controls .legend { margin-bottom: 0; }
+.traj-controls .legend-chip { min-height: 30px; }
+.traj-visual { min-width: 0; }
+@media (max-width: 760px) {
+  .traj-layout { grid-template-columns: minmax(0, 1fr); gap: 14px; }
+  .traj-controls { padding: 0 0 12px; border-right: 0; border-bottom: 1px solid var(--linha); }
+  .traj-controls .traj-actions, .traj-controls .legend { flex-direction: row; flex-wrap: wrap; align-items: flex-start; }
+  .traj-controls .toggle-chip, .traj-controls .legend-chip { width: auto; }
+}
 .toggle-chip {
   appearance: none;
   border: 1.5px solid var(--linha);
