@@ -592,6 +592,7 @@ button.kpi:hover { transform: translateY(-3px); box-shadow: 0 16px 34px rgba(16,
 .tabela-disciplinas tbody tr.acima { background: var(--verde-suave); }
 
 .tabela-disciplinas td { padding: 11px 16px; vertical-align: middle; }
+.tabela-disciplinas thead th:nth-child(2) { text-align: center; }
 .tabela-disciplinas thead th:nth-child(n+3) { text-align: center; }
 .tabela-disciplinas tbody td:nth-child(n+3) { text-align: center; }
 .tabela-disciplinas tbody tr td:first-child { border-radius: 16px 0 0 16px; padding-left: 18px; }
@@ -611,6 +612,7 @@ button.kpi:hover { transform: translateY(-3px); box-shadow: 0 16px 34px rgba(16,
   color: var(--tinta);
 }
 .pill-nota.vazia { background: #eef1f4 !important; color: #8a93a0; font-weight: 600; }
+#disciplinas-tabela .pill-nota { min-width: 48px; padding: 6px 10px; font-size: 14.4px; }
 
 .cel-media { min-width: 92px; }
 .cel-media b { font-size: 17px; font-weight: 800; letter-spacing: -.02em; display: block; }

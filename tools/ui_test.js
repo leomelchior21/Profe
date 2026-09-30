@@ -178,6 +178,26 @@ async function run() {
       check(segmentSizing.every(part => Math.abs(part.actual - part.count / totalParts) < .03), 'distribution segments reflect discipline proportions');
     }
     check(await page.locator('#disciplinas-tabela .discipline-swatch').count() > 0 && await page.locator('#disciplinas-tabela .avatar-materia').count() === 0, 'discipline names use legible color markers');
+    if (width === 1440) {
+      const grades = await page.locator('#disciplinas-tabela').evaluate(section => {
+        const header = section.querySelector('thead th:nth-child(2)').getBoundingClientRect();
+        const notes = section.querySelector('tbody .bimestre-list').getBoundingClientRect();
+        const fontSize = parseFloat(getComputedStyle(section.querySelector('tbody .pill-nota')).fontSize);
+        return { offset: Math.abs((header.left + header.right - notes.left - notes.right) / 2), fontSize };
+      });
+      check(grades.offset < 3 && Math.abs(grades.fontSize - 14.4) < .1, 'period grades align with their heading and use 20% larger type');
+      await page.waitForFunction(() => {
+        const section = document.querySelector('#trajetoria');
+        const controls = section.querySelector('.traj-controls');
+        const svg = section.querySelector('.traj-visual svg');
+        return svg && Math.abs(svg.getBoundingClientRect().height - controls.getBoundingClientRect().height) < 3;
+      });
+      const chartHeightDifference = await page.locator('#trajetoria').evaluate(section => Math.abs(
+        section.querySelector('.traj-visual svg').getBoundingClientRect().height -
+        section.querySelector('.traj-controls').getBoundingClientRect().height
+      ));
+      check(chartHeightDifference < 3, 'trajectory chart height matches the controls');
+    }
     if (width === 1440 || width === 390) {
       const trajectoryLayout = await page.locator('#trajetoria').evaluate(section => {
         const controls = section.querySelector('.traj-controls').getBoundingClientRect();
@@ -205,6 +225,17 @@ async function run() {
         check(await page.locator('#f-aluno').inputValue() === student, 'meeting previous student restores selection');
         check(await page.locator('#meeting-body #resumo .grade-segmented-bar').count() === 1, 'meeting overview uses the same segmented bar');
         if (width === 390 || width === 1440) await page.screenshot({ path: path.join(out, 'meeting-overview-' + width + '.png') });
+      }
+      if (i === 1 && width === 1440) {
+        await page.waitForFunction(() => {
+          const section = document.querySelector('#meeting-body #trajetoria');
+          const svg = section && section.querySelector('.traj-visual svg');
+          return svg && Math.abs(svg.getBoundingClientRect().height - section.querySelector('.traj-controls').getBoundingClientRect().height) < 6;
+        });
+        check(await page.locator('#meeting-body #trajetoria').evaluate(section => Math.abs(
+          section.querySelector('.traj-visual svg').getBoundingClientRect().height -
+          section.querySelector('.traj-controls').getBoundingClientRect().height
+        ) < 6), 'meeting trajectory chart reaches the bottom of its controls');
       }
       if (i === 4) {
         check(await page.locator('#meeting-body #mapa .meeting-patterns svg[role="img"]').count() === 1, 'meeting map includes patterns scatterplot');

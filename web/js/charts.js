@@ -177,7 +177,7 @@ window.Charts = (function () {
 
   function renderLine(host, opts, width) {
     clear(host);
-    var H = opts.altura || 300;
+    var H = typeof opts.altura === 'function' ? opts.altura() : (opts.altura || 300);
     var ml = 42, mr = 18, mt = 30, mb = 30;
     var W = Math.max(280, width);
     var iw = W - ml - mr, ih = H - mt - mb;

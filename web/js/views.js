@@ -717,7 +717,12 @@ window.Views = (function () {
         desenhar();
       });
       Ch.lineChart(host, {
-        altura: h(320, ctx), series: seriesAtuais(), xLabels: xLabels,
+        altura: function () {
+          return window.matchMedia('(max-width: 760px)').matches
+            ? h(320, ctx)
+            : Math.max(h(320, ctx), Math.ceil(controles.getBoundingClientRect().height));
+        },
+        series: seriesAtuais(), xLabels: xLabels,
         refLine: REF != null ? { valor: REF, rotulo: CFG.rotuloReferencia + ' (' + f1(REF) + ')' } : null,
         tooltip: tooltip, aria: 'Trajetória das notas por disciplina ao longo dos bimestres'
       });
