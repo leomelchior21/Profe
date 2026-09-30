@@ -510,6 +510,42 @@
       wrap.appendChild(secT.el);
     }
 
+    /* notas de todas as disciplinas, sem depender do filtro do painel */
+    if (sd.numericas.length) {
+      var secD = C.secao('print-disciplinas', 'Visão por disciplina', 'Notas finais registradas em cada bimestre; — indica ausência de nota.');
+      var tabela = document.createElement('table');
+      tabela.className = 'print-disciplines';
+      var cabTabela = '<thead><tr><th scope="col">Disciplina</th>';
+      sd.bimestres.forEach(function (bi) { cabTabela += '<th scope="col">' + C.esc(A.rotuloBimestreCurto(bi)) + '</th>'; });
+      tabela.innerHTML = cabTabela + '<th scope="col">Média</th><th scope="col">Variação</th></tr></thead>';
+      var corpo = document.createElement('tbody');
+      var coresD = V.mapaCores(sd);
+      sd.numericas.slice().sort(function (a, b) { return A.ordemMaterias(a.nome, b.nome); }).forEach(function (m) {
+        var tr = document.createElement('tr');
+        var disciplina = document.createElement('th');
+        disciplina.scope = 'row';
+        disciplina.innerHTML = '<span class="print-discipline-name"><i style="background:' + coresD[m.nome] + '"></i>' + C.esc(m.rotulo) + '</span>';
+        tr.appendChild(disciplina);
+        sd.bimestres.forEach(function (bi) {
+          var s = m.serie.filter(function (x) { return x.bimestre === bi; })[0];
+          var td = document.createElement('td');
+          td.textContent = s && s.nota != null ? A.fmt1(s.nota) : '—';
+          tr.appendChild(td);
+        });
+        var media = document.createElement('td');
+        media.className = 'print-discipline-average';
+        media.textContent = A.fmt1(m.media);
+        tr.appendChild(media);
+        var variacao = document.createElement('td');
+        variacao.textContent = m.variacaoTotal == null ? '—' : A.fmtSigned(m.variacaoTotal);
+        tr.appendChild(variacao);
+        corpo.appendChild(tr);
+      });
+      tabela.appendChild(corpo);
+      secD.body.appendChild(tabela);
+      wrap.appendChild(secD.el);
+    }
+
     /* perfil */
     if (CFG.relatorio.incluirPerfilDisciplinas) {
       var secP = C.secao('print-perfil', 'Perfil por disciplina', 'Média do ano por disciplina; a marca vertical é a mediana da turma.');
@@ -573,27 +609,15 @@
   function Ch_line(host, sd, bimestres) {
     var ref = CFG.notaReferencia;
     var Ch = window.Charts;
-
-    /* mesmos critérios de destaque da tela: 2 maiores, 2 menores e as 2 maiores variações */
-    var dest = {};
-    var porMedia = sd.numericas.filter(function (m) { return m.media != null; }).slice()
-      .sort(function (a, b) { return b.media - a.media; });
-    if (porMedia.length) { dest[porMedia[0].nome] = 1; if (porMedia[1]) dest[porMedia[1].nome] = 1; }
-    if (porMedia.length > 1) { dest[porMedia[porMedia.length - 1].nome] = 1; if (porMedia[porMedia.length - 2]) dest[porMedia[porMedia.length - 2].nome] = 1; }
-    sd.numericas.filter(function (m) { return m.variacaoTotal != null; }).slice()
-      .sort(function (a, b) { return Math.abs(b.variacaoTotal) - Math.abs(a.variacaoTotal); })
-      .slice(0, 2).forEach(function (m) { dest[m.nome] = 1; });
-
     var cores = V.mapaCores(sd);
 
     Ch.lineChart(host, {
       altura: 260, interativo: false,
       series: sd.numericas.map(function (m) {
-        var d = !!dest[m.nome];
         return {
           id: m.nome, nome: m.rotulo,
-          cor: d ? cores[m.nome] : '#c3cad3',
-          muted: !d, destaque: d,
+          cor: cores[m.nome],
+          destaque: true,
           valores: bimestres.map(function (bi) {
             var s = m.serie.filter(function (x) { return x.bimestre === bi; })[0];
             return s ? s.nota : null;
@@ -605,20 +629,15 @@
       aria: 'Trajetória das notas por disciplina'
     });
 
-    /* legenda estática do relatório */
+    /* a mesma cor identifica cada disciplina no gráfico e na tabela */
     var leg = document.createElement('div');
-    leg.className = 'legend static';
+    leg.className = 'legend static print-legend';
     sd.numericas.forEach(function (m) {
-      var d = !!dest[m.nome];
       var sp = document.createElement('span');
-      sp.className = 'legend-chip' + (d ? ' destaque' : ' off');
-      sp.innerHTML = '<i style="background:' + (d ? cores[m.nome] : '#c3cad3') + '"></i>' + C.esc(m.rotulo);
+      sp.className = 'legend-chip';
+      sp.innerHTML = '<i style="background:' + cores[m.nome] + '"></i>' + C.esc(m.rotulo);
       leg.appendChild(sp);
     });
-    var nota = document.createElement('span');
-    nota.className = 'hint';
-    nota.textContent = 'Linhas destacadas: maiores médias, menores médias e maiores variações.';
-    leg.appendChild(nota);
     host.parentNode.appendChild(leg);
   }
 

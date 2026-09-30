@@ -59,6 +59,12 @@
   .print-report .heat th { font-size: 10px !important; }
   .print-report .data-table { font-size: 10px !important; }
   .print-report .tooltip { display: none !important; }
+  .print-report .print-legend .legend-chip { break-inside: avoid; }
+  .print-report .print-disciplines { font-size: 10.5px !important; }
+  .print-report .print-disciplines th,
+  .print-report .print-disciplines td { padding: 5px 6px !important; }
+  .print-report .print-disciplines tr { break-inside: avoid; }
+  .print-report .print-disciplines thead { display: table-header-group; }
 
   a, a:visited { text-decoration: none; color: #000; }
 

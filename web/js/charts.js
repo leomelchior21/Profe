@@ -40,7 +40,7 @@ window.Charts = (function () {
   }
 
   /* cores categóricas (série de disciplinas) — mesma família visual dos cards */
-  var PALETA = ['#3d7bd9', '#63b32e', '#f2a93b', '#9b6ede', '#f2694b', '#2ab7ca', '#a16207', '#d84f8e', '#4d6b8a', '#6b7280'];
+  var PALETA = ['#3d7bd9', '#63b32e', '#f2a93b', '#9b6ede', '#f2694b', '#2ab7ca', '#a16207', '#d84f8e', '#4d6b8a', '#6b7280', '#0f766e'];
 
   /* cores semânticas do produto */
   var COR = {

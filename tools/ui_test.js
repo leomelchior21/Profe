@@ -110,6 +110,8 @@ async function run() {
   check(await page.locator('#coorte-distribuicao .cohort-dist-row').count() > 0, 'distribution rows visible');
   check(await page.locator('#btn-logout').getAttribute('aria-label') === 'Sair do painel', 'logout icon labelled');
   check(await page.locator('.brand-mark').count() === 3 && await page.locator('.brand-mark').first().locator('path').count() === 2, 'new book logo appears in login, panel, and meeting');
+  await page.evaluate(() => window.scrollTo(0, 0));
+  await page.waitForFunction(() => !document.querySelector('.topbar').classList.contains('is-scrolled'));
   check(await page.locator('.topbar').evaluate(el => getComputedStyle(el).backgroundColor === 'rgba(0, 0, 0, 0)'), 'header reveals page gradient at top');
   await page.evaluate(() => window.scrollTo(0, 320));
   await page.waitForFunction(() => document.querySelector('.topbar').classList.contains('is-scrolled'));
@@ -212,6 +214,13 @@ async function run() {
       check(!overflow, 'meeting fits ' + width + ' step ' + i);
       if (i < 7) await page.locator('#meeting-next').click();
     }
+    if (width === 1440) {
+      await page.locator('#meeting-print').click();
+      await page.locator('#print-disciplinas tbody tr').first().waitFor();
+      check(await page.locator('#print-disciplinas tbody tr').count() === await page.locator('#view #disciplinas-tabela tbody tr').count(), 'meeting summary contains every discipline');
+      await page.keyboard.press('Escape');
+      check(await page.locator('#meeting').isVisible(), 'closing meeting summary returns to meeting');
+    }
     await page.keyboard.press('Escape');
     check(await page.locator('#meeting').isHidden(), 'meeting exits');
   }
@@ -221,7 +230,34 @@ async function run() {
   check(await page.locator('#f-bimestre').inputValue() === '2', 'period preserved');
   await page.locator('#btn-resumo').click();
   await page.locator('.print-report').waitFor();
+  await page.waitForFunction(() => document.querySelectorAll('#print-trajetoria .serie').length === document.querySelectorAll('#print-trajetoria .legend-chip').length);
   check(await page.locator('#printOverlay').getAttribute('aria-hidden') === 'false', 'print dialog accessible');
+  const printDisciplineData = await page.evaluate(() => {
+    const filters = ['f-ano-letivo', 'f-ano', 'f-turma', 'f-aluno'].map(id => document.getElementById(id).value);
+    const sd = window.Analytics.Store.studentData(filters[3], { anoLetivo: filters[0], ano: filters[1], turma: filters[2] });
+    const rows = [...document.querySelectorAll('#print-disciplinas tbody tr')];
+    const legend = [...document.querySelectorAll('#print-trajetoria .legend-chip')];
+    const lines = [...document.querySelectorAll('#print-trajetoria .serie path')];
+    return {
+      expected: sd.numericas.length,
+      periodCount: sd.bimestres.length,
+      rows: rows.map(row => [...row.cells].map(cell => cell.textContent.trim())),
+      expectedRows: sd.numericas.slice().sort((a, b) => window.Analytics.ordemMaterias(a.nome, b.nome)).map(m => [
+        m.rotulo,
+        ...sd.bimestres.map(bi => {
+          const period = m.serie.find(s => s.bimestre === bi);
+          return period && period.nota != null ? window.Analytics.fmt1(period.nota) : '—';
+        }),
+        window.Analytics.fmt1(m.media),
+        m.variacaoTotal == null ? '—' : window.Analytics.fmtSigned(m.variacaoTotal)
+      ]),
+      legendColors: legend.map(chip => chip.querySelector('i').style.backgroundColor),
+      lineColors: lines.map(line => line.getAttribute('stroke')),
+      legendNames: legend.map(chip => chip.textContent.trim())
+    };
+  });
+  check(printDisciplineData.rows.length === printDisciplineData.expected && JSON.stringify(printDisciplineData.rows) === JSON.stringify(printDisciplineData.expectedRows), 'print table includes every discipline and period grade despite active filters');
+  check(printDisciplineData.legendNames.length === printDisciplineData.expected && new Set(printDisciplineData.legendColors).size === printDisciplineData.expected && printDisciplineData.lineColors.length === printDisciplineData.expected, 'print legend identifies every plotted discipline with a distinct color: ' + JSON.stringify({ expected: printDisciplineData.expected, names: printDisciplineData.legendNames.length, colors: new Set(printDisciplineData.legendColors).size, lines: printDisciplineData.lineColors.length }));
   await page.emulateMedia({ media: 'print' });
   await page.pdf({ path: path.join(out, 'resumo.pdf'), format: 'A4', printBackground: true });
   await page.emulateMedia({ media: 'screen' });

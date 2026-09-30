@@ -1106,6 +1106,21 @@ button.kpi:hover { transform: translateY(-3px); box-shadow: 0 16px 34px rgba(16,
 .print-report .card { box-shadow: none; background: #fff; padding: 0 0 18px; border-bottom: 1.5px solid var(--linha); border-radius: 0; }
 .print-report .card-desc { margin-bottom: 10px; }
 
+.print-legend { gap: 5px 12px; margin: 10px 0 2px; }
+.print-legend .legend-chip { gap: 6px; min-height: 24px; padding: 2px 0; background: transparent; color: var(--tinta); font-size: 11px; }
+.print-legend .legend-chip i { width: 19px; height: 4px; border-radius: 2px; flex: 0 0 auto; }
+
+.print-disciplines { width: 100%; border-collapse: collapse; font-size: 12px; font-variant-numeric: tabular-nums; }
+.print-disciplines th, .print-disciplines td { padding: 7px 8px; border-bottom: 1px solid var(--linha); }
+.print-disciplines thead th { text-align: center; background: var(--papel-2); white-space: nowrap; }
+.print-disciplines thead th:first-child, .print-disciplines tbody th { text-align: left; }
+.print-disciplines tbody th { font-weight: 700; }
+.print-disciplines tbody td { text-align: center; }
+.print-disciplines tbody tr:nth-child(even) { background: #f8faf7; }
+.print-discipline-name { display: inline-flex; align-items: center; gap: 8px; }
+.print-discipline-name i { display: inline-block; width: 5px; height: 17px; border-radius: 3px; flex: 0 0 auto; }
+.print-disciplines .print-discipline-average { font-weight: 800; }
+
 .print-list { margin: 0; padding-left: 18px; font-size: 13px; color: var(--tinta-2); }
 .print-list li { margin-bottom: 8px; }
 .print-list em { color: var(--tinta-3); font-style: normal; font-size: 11.5px; }
