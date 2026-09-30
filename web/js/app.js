@@ -546,6 +546,44 @@
       wrap.appendChild(secD.el);
     }
 
+    /* diferenças entre bimestres consecutivos para cada disciplina */
+    if (sd.bimestres.length > 1 && sd.numericas.length) {
+      var pares = [];
+      for (var i = 1; i < sd.bimestres.length; i++) pares.push([sd.bimestres[i - 1], sd.bimestres[i]]);
+      var secV = C.secao('print-variacao', 'Variação entre bimestres', 'Diferença em pontos entre notas de bimestres consecutivos; — indica comparação sem as duas notas.');
+      var tabelaV = document.createElement('table');
+      tabelaV.className = 'print-disciplines print-variations';
+      var cabV = '<thead><tr><th scope="col">Disciplina</th>';
+      pares.forEach(function (p) { cabV += '<th scope="col">' + C.esc(A.rotuloBimestreCurto(p[0]) + ' → ' + A.rotuloBimestreCurto(p[1])) + '</th>'; });
+      tabelaV.innerHTML = cabV + '<th scope="col">Média</th></tr></thead>';
+      var corpoV = document.createElement('tbody');
+      var coresV = V.mapaCores(sd);
+      sd.numericas.slice().sort(function (a, b) { return A.ordemMaterias(a.nome, b.nome); }).forEach(function (m) {
+        var tr = document.createElement('tr');
+        var nome = document.createElement('th');
+        nome.scope = 'row';
+        nome.innerHTML = '<span class="print-discipline-name"><i style="background:' + coresV[m.nome] + '"></i>' + C.esc(m.rotulo) + '</span>';
+        tr.appendChild(nome);
+        var valores = [];
+        pares.forEach(function (p) {
+          var d = m.deltas.filter(function (x) { return x.de === p[0] && x.para === p[1]; })[0];
+          var td = document.createElement('td');
+          td.className = 'print-delta ' + (d ? d.valor > 0 ? 'positive' : d.valor < 0 ? 'negative' : 'stable' : 'missing');
+          td.textContent = d ? A.fmtSigned(d.valor) : '—';
+          if (d) valores.push(d.valor);
+          tr.appendChild(td);
+        });
+        var mediaV = document.createElement('td');
+        mediaV.className = 'print-discipline-average';
+        mediaV.textContent = valores.length ? A.fmtSigned(A.Stats.round2(A.Stats.mean(valores))) : '—';
+        tr.appendChild(mediaV);
+        corpoV.appendChild(tr);
+      });
+      tabelaV.appendChild(corpoV);
+      secV.body.appendChild(tabelaV);
+      wrap.appendChild(secV.el);
+    }
+
     /* perfil */
     if (CFG.relatorio.incluirPerfilDisciplinas) {
       var secP = C.secao('print-perfil', 'Perfil por disciplina', 'Média do ano por disciplina; a marca vertical é a mediana da turma.');

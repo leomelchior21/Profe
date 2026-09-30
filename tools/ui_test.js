@@ -277,6 +277,7 @@ async function run() {
     const rows = [...document.querySelectorAll('#print-disciplinas tbody tr')];
     const legend = [...document.querySelectorAll('#print-trajetoria .legend-chip')];
     const lines = [...document.querySelectorAll('#print-trajetoria .serie path')];
+    const pairs = sd.bimestres.slice(1).map((bi, i) => [sd.bimestres[i], bi]);
     return {
       expected: sd.numericas.length,
       periodCount: sd.bimestres.length,
@@ -290,12 +291,20 @@ async function run() {
         window.Analytics.fmt1(m.media),
         m.variacaoTotal == null ? '—' : window.Analytics.fmtSigned(m.variacaoTotal)
       ]),
+      variationRows: [...document.querySelectorAll('#print-variacao tbody tr')].map(row => [...row.cells].map(cell => cell.textContent.trim())),
+      expectedVariationRows: sd.numericas.slice().sort((a, b) => window.Analytics.ordemMaterias(a.nome, b.nome)).map(m => {
+        const values = pairs.map(pair => m.deltas.find(d => d.de === pair[0] && d.para === pair[1])?.valor ?? null);
+        const present = values.filter(value => value != null);
+        return [m.rotulo, ...values.map(value => value == null ? '—' : window.Analytics.fmtSigned(value)),
+          present.length ? window.Analytics.fmtSigned(window.Analytics.Stats.round2(window.Analytics.Stats.mean(present))) : '—'];
+      }),
       legendColors: legend.map(chip => chip.querySelector('i').style.backgroundColor),
       lineColors: lines.map(line => line.getAttribute('stroke')),
       legendNames: legend.map(chip => chip.textContent.trim())
     };
   });
   check(printDisciplineData.rows.length === printDisciplineData.expected && JSON.stringify(printDisciplineData.rows) === JSON.stringify(printDisciplineData.expectedRows), 'print table includes every discipline and period grade despite active filters');
+  check(JSON.stringify(printDisciplineData.variationRows) === JSON.stringify(printDisciplineData.expectedVariationRows), 'print variation table includes every discipline and consecutive period');
   check(printDisciplineData.legendNames.length === printDisciplineData.expected && new Set(printDisciplineData.legendColors).size === printDisciplineData.expected && printDisciplineData.lineColors.length === printDisciplineData.expected, 'print legend identifies every plotted discipline with a distinct color: ' + JSON.stringify({ expected: printDisciplineData.expected, names: printDisciplineData.legendNames.length, colors: new Set(printDisciplineData.legendColors).size, lines: printDisciplineData.lineColors.length }));
   await page.emulateMedia({ media: 'print' });
   await page.pdf({ path: path.join(out, 'resumo.pdf'), format: 'A4', printBackground: true });
@@ -315,6 +324,34 @@ async function run() {
   }
   await page.locator('#f-turma').selectOption('');
   const all = await page.locator('#f-aluno option').evaluateAll(ops => ops.slice(1).map(o => o.value));
+  const recoveryStudent = await page.evaluate(ras => ras.find(ra => window.Analytics.Store.studentData(ra, { ano: '9' }).recuperacoes.length > 0), all);
+  check(!!recoveryStudent, 'student with recorded recovery exists');
+  await page.locator('#f-aluno').selectOption(recoveryStudent);
+  const recoveryPanels = await page.evaluate(ra => {
+    const sd = window.Analytics.Store.studentData(ra, { ano: '9' });
+    const periods = [...new Set([...sd.bimestres, ...sd.recuperacoes.map(r => r.bimestre)])].sort((a, b) => a - b);
+    const panels = [...document.querySelectorAll('#recuperacao .recovery-period')];
+    return {
+      expectedPeriods: periods.map(window.Analytics.rotuloBimestre),
+      headings: panels.map(panel => panel.querySelector('h3').textContent),
+      eventCount: sd.recuperacoes.length,
+      plottedEvents: document.querySelectorAll('#recuperacao .slope-row').length,
+      listedEvents: document.querySelectorAll('#recuperacao .recovery-event-list li').length,
+      emptyPeriods: panels.filter(panel => panel.querySelector('.recovery-period-empty')).length,
+      sideBySide: panels.length < 2 || panels[0].getBoundingClientRect().right < panels[1].getBoundingClientRect().left
+    };
+  }, recoveryStudent);
+  check(JSON.stringify(recoveryPanels.headings) === JSON.stringify(recoveryPanels.expectedPeriods) && recoveryPanels.plottedEvents === recoveryPanels.eventCount && recoveryPanels.listedEvents === recoveryPanels.eventCount && recoveryPanels.sideBySide, 'recovery charts and values are grouped by period and sit side by side');
+  await page.locator('#recuperacao').screenshot({ path: path.join(out, 'student-recovery-1440.png') });
+  await page.locator('#btn-reuniao').click();
+  await page.locator('#meeting-progress [aria-label^="Ir para o passo 7:"]').click();
+  check(await page.locator('#meeting-body #recuperacao .recovery-period').count() === recoveryPanels.expectedPeriods.length && await page.locator('#meeting').evaluate(el => el.scrollWidth <= el.clientWidth + 2), 'meeting recovery step keeps one panel per period without horizontal overflow');
+  await page.keyboard.press('Escape');
+  check(await page.locator('#meeting').isHidden(), 'meeting closes after recovery check');
+  await page.setViewportSize({ width: 390, height: 844 });
+  check(await page.locator('#view #recuperacao .recovery-period-grid').evaluate(grid => grid.scrollWidth <= grid.clientWidth + 2 && [...grid.children].every((panel, i, panels) => i === 0 || panels[i - 1].getBoundingClientRect().bottom < panel.getBoundingClientRect().top)), 'recovery period charts stack without horizontal overflow on mobile');
+  await page.locator('#view #recuperacao').screenshot({ path: path.join(out, 'student-recovery-390.png') });
+  await page.setViewportSize({ width: 1440, height: 1000 });
   for (const ra of [...all.slice(0, 3), all[all.length - 1]]) { await page.locator('#f-aluno').selectOption(ra); check(await page.locator('#aluno h1').count() === 1, 'student renders'); }
   await page.locator('#f-turma').selectOption('9B');
   const classList = await page.locator('#f-aluno option').evaluateAll(ops => ops.slice(1).map(o => o.value));

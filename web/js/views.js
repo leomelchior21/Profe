@@ -1130,7 +1130,7 @@ window.Views = (function () {
     var sd = ctx.sd;
     var sec = C.secao('recuperacao', 'Impacto da recuperação',
       'Nota antes da recuperação (NB), resultado da recuperação (R) e média final registrada (MB). Leitura descritiva: o painel não julga se recuperar é positivo ou negativo.',
-      { ajuda: 'NB é a nota antes da recuperação, R é o resultado da recuperação e MB é a média final registrada no boletim. As linhas ligam os três momentos de cada evento; o ganho é MB − NB. A linha tracejada é a referência da escola.' });
+      { ajuda: 'Cada bimestre tem seu próprio gráfico. NB é a nota antes da recuperação, R é o resultado da recuperação e MB é a média final registrada no boletim. As linhas ligam os três momentos de cada evento; o ganho é MB − NB. A linha tracejada é a referência da escola.' });
     var el = sec.el;
     if (!sd.recuperacoes.length) {
       sec.body.appendChild(C.vazio('Nenhum evento de recuperação registrado no período.'));
@@ -1158,27 +1158,56 @@ window.Views = (function () {
     });
     sec.body.appendChild(cards);
 
-    var host = document.createElement('div');
-    sec.body.appendChild(host);
+    var grade = document.createElement('div');
+    grade.className = 'recovery-period-grid';
+    sec.body.appendChild(grade);
     var cores = mapaCores(sd);
-    Ch.slope(host, {
-      altura: h(300, ctx),
-      eventos: sd.recuperacoes.map(function (r) {
-        return { id: r.materia, rotulo: r.rotulo + ' (' + rbc(r.bimestre) + ')', nb: r.nb, recuperacao: r.recuperacao, mb: r.mb, ganho: r.ganho, cor: cores[r.materia] };
-      }),
-      pontos: ['Antes (NB)', 'Recuperação (R)', 'Média final (MB)'],
-      refLine: REF != null ? { valor: REF, rotulo: 'referência' } : null,
-      fmt: f1, aria: 'Comparação entre nota antes da recuperação, recuperação e média final',
-      tooltip: function (ev) {
-        var linhas = [
-          { rotulo: 'Antes (NB)', valor: f1(ev.nb) },
-          { rotulo: 'Recuperação (R)', valor: f1(ev.recuperacao) },
-          { rotulo: 'Média final (MB)', valor: f1(ev.mb) }
-        ];
-        if (ev.ganho != null) linhas.push({ rotulo: 'Ganho (MB − NB)', valor: fs(ev.ganho) });
-        if (REF != null) linhas.push({ rotulo: 'Referência', valor: f1(REF) + (ev.mb != null ? (ev.mb >= REF ? ' · média final atingiu' : ' · média final não atingiu') : '') });
-        return Ch.tipHTML(esc(ev.rotulo), null, linhas);
+    var periodos = unique(sd.bimestres.concat(sd.recuperacoes.map(function (r) { return r.bimestre; }))).map(Number).sort(function (a, b) { return a - b; });
+    periodos.forEach(function (bi) {
+      var eventos = sd.recuperacoes.filter(function (r) { return r.bimestre === bi; });
+      var painel = document.createElement('div');
+      painel.className = 'recovery-period';
+      var titulo = document.createElement('h3');
+      titulo.textContent = rb(bi);
+      painel.appendChild(titulo);
+      grade.appendChild(painel);
+      if (!eventos.length) {
+        var vazio = document.createElement('p');
+        vazio.className = 'hint recovery-period-empty';
+        vazio.textContent = 'Nenhuma recuperação registrada neste bimestre.';
+        painel.appendChild(vazio);
+        return;
       }
+      var host = document.createElement('div');
+      host.className = 'chart-host';
+      painel.appendChild(host);
+      Ch.slope(host, {
+        altura: h(250, ctx), compact: true,
+        eventos: eventos.map(function (r) {
+          return { id: r.materia, rotulo: r.rotulo, nb: r.nb, recuperacao: r.recuperacao, mb: r.mb, ganho: r.ganho, cor: cores[r.materia] };
+        }),
+        pontos: ['NB', 'R', 'MB'],
+        refLine: REF != null ? { valor: REF, rotulo: 'ref.' } : null,
+        fmt: f1, aria: 'Impacto da recuperação no ' + rb(bi),
+        tooltip: function (ev) {
+          var linhas = [
+            { rotulo: 'Antes (NB)', valor: f1(ev.nb) },
+            { rotulo: 'Recuperação (R)', valor: f1(ev.recuperacao) },
+            { rotulo: 'Média final (MB)', valor: f1(ev.mb) }
+          ];
+          if (ev.ganho != null) linhas.push({ rotulo: 'Ganho (MB − NB)', valor: fs(ev.ganho) });
+          if (REF != null) linhas.push({ rotulo: 'Referência', valor: f1(REF) + (ev.mb != null ? (ev.mb >= REF ? ' · média final atingiu' : ' · média final não atingiu') : '') });
+          return Ch.tipHTML(esc(ev.rotulo), rb(bi), linhas);
+        }
+      });
+      var detalhes = document.createElement('ul');
+      detalhes.className = 'recovery-event-list';
+      eventos.forEach(function (r) {
+        var item = document.createElement('li');
+        item.innerHTML = '<i style="background:' + cores[r.materia] + '"></i><span><b>' + esc(r.rotulo) + '</b><small>NB ' + f1(r.nb) + ' · R ' + f1(r.recuperacao) + ' · MB ' + f1(r.mb) + (r.ganho != null ? ' (' + fs(r.ganho) + ')' : '') + '</small></span>';
+        detalhes.appendChild(item);
+      });
+      painel.appendChild(detalhes);
     });
     var obs = document.createElement('p');
     obs.className = 'hint';

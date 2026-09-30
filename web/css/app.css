@@ -808,6 +808,17 @@ button.kpi:hover { transform: translateY(-3px); box-shadow: 0 16px 34px rgba(16,
 .stat-label { font-size: 10.5px; font-weight: 800; letter-spacing: .07em; text-transform: uppercase; color: var(--tinta-3); }
 .stat-value { font-size: 24px; font-weight: 800; font-variant-numeric: tabular-nums; margin-top: 2px; letter-spacing: -.02em; }
 
+.recovery-period-grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(min(100%, 360px), 1fr)); gap: 16px; align-items: start; }
+.recovery-period { min-width: 0; padding: 14px 12px 10px; border: 1px solid var(--linha); border-radius: 16px; background: #fff; }
+.recovery-period h3 { margin: 0 0 8px; font-size: 14px; font-weight: 800; }
+.recovery-period-empty { margin: 18px 0; }
+.recovery-event-list { margin: 2px 0 0; padding: 0; list-style: none; }
+.recovery-event-list li { display: flex; align-items: flex-start; gap: 8px; padding: 6px 0; border-top: 1px solid var(--linha); }
+.recovery-event-list i { width: 9px; height: 9px; margin-top: 4px; border-radius: 50%; flex: 0 0 auto; }
+.recovery-event-list span { min-width: 0; display: flex; flex-wrap: wrap; gap: 2px 8px; align-items: baseline; }
+.recovery-event-list b { font-size: 11px; }
+.recovery-event-list small { font-size: 10.5px; color: var(--tinta-2); font-variant-numeric: tabular-nums; }
+
 /* ------------------------------------------------------------- small multi */
 
 .mini-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(184px, 1fr)); gap: 14px; }
@@ -1135,6 +1146,10 @@ button.kpi:hover { transform: translateY(-3px); box-shadow: 0 16px 34px rgba(16,
 .print-discipline-name { display: inline-flex; align-items: center; gap: 8px; }
 .print-discipline-name i { display: inline-block; width: 5px; height: 17px; border-radius: 3px; flex: 0 0 auto; }
 .print-disciplines .print-discipline-average { font-weight: 800; }
+.print-variations .print-delta { font-weight: 700; }
+.print-variations .print-delta.positive { color: #2c5c12; }
+.print-variations .print-delta.negative { color: #82331f; }
+.print-variations .print-delta.missing { color: #7b838c; }
 
 .print-list { margin: 0; padding-left: 18px; font-size: 13px; color: var(--tinta-2); }
 .print-list li { margin-bottom: 8px; }

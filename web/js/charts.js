@@ -611,7 +611,7 @@ window.Charts = (function () {
       clear(host);
       var eventos = opts.eventos;
       if (!eventos.length) return;
-      var H = opts.altura || 320, ml = 150, mr = 90, mt = 30, mb = 34;
+      var H = opts.altura || 320, ml = opts.compact ? 34 : 150, mr = opts.compact ? 18 : 90, mt = 30, mb = 34;
       var W = Math.max(340, width);
       var iw = W - ml - mr, ih = H - mt - mb;
       var svg = el('svg', { width: W, height: H, viewBox: '0 0 ' + W + ' ' + H, role: 'img' });
@@ -644,6 +644,10 @@ window.Charts = (function () {
 
       eventos.forEach(function (ev, i) {
         var g = el('g', { class: 'slope-row' });
+        if (opts.compact) {
+          g.setAttribute('role', 'img');
+          g.setAttribute('aria-label', ev.rotulo + ': NB ' + (opts.fmt ? opts.fmt(ev.nb) : ev.nb) + ', recuperação ' + (opts.fmt ? opts.fmt(ev.recuperacao) : ev.recuperacao) + ', MB ' + (opts.fmt ? opts.fmt(ev.mb) : ev.mb));
+        }
         var cor = ev.cor || paletteCategoria(i);
         var pts = [
           { x: X(0), y: Y(ev.nb), v: ev.nb },
@@ -657,17 +661,19 @@ window.Charts = (function () {
           if (p.v == null) return;
           g.appendChild(el('circle', { cx: p.x, cy: p.y, r: 5, fill: '#fff', stroke: cor, 'stroke-width': 2.4 }));
         });
-        /* rótulos (com deslocamento para não sobrepor quando as notas coincidem) */
-        var yEsq = livre(Y(ev.nb));
-        var yDir = livre(Y(ev.mb));
-        g.appendChild(txt(ml - 12, yEsq + 4, ev.rotulo, { class: 'g-label', 'text-anchor': 'end' }));
-        var rotuloDir = ev.mb == null ? '—' : (opts.fmt ? opts.fmt(ev.mb) : ev.mb);
-        if (ev.ganho != null) rotuloDir += '  (' + (ev.ganho > 0 ? '+' : ev.ganho < 0 ? '−' : '') + Math.abs(ev.ganho).toFixed(1).replace('.', ',') + ')';
-        var tDir = txt(X(2) + 12, yDir + 4, rotuloDir, { class: 'g-value', 'text-anchor': 'start', fill: ev.ganho > 0 ? '#2f8f5b' : (ev.ganho < 0 ? '#c05746' : '#5b6470') });
-        g.appendChild(tDir);
-        /* leve guia ligando o rótulo deslocado ao ponto */
-        if (ev.mb != null && Math.abs(yDir - Y(ev.mb)) > 3) {
-          g.appendChild(el('line', { x1: X(2) + 4, y1: Y(ev.mb), x2: X(2) + 9, y2: yDir, stroke: cor, 'stroke-width': 1, opacity: .6 }));
+        if (!opts.compact) {
+          /* rótulos (com deslocamento para não sobrepor quando as notas coincidem) */
+          var yEsq = livre(Y(ev.nb));
+          var yDir = livre(Y(ev.mb));
+          g.appendChild(txt(ml - 12, yEsq + 4, ev.rotulo, { class: 'g-label', 'text-anchor': 'end' }));
+          var rotuloDir = ev.mb == null ? '—' : (opts.fmt ? opts.fmt(ev.mb) : ev.mb);
+          if (ev.ganho != null) rotuloDir += '  (' + (ev.ganho > 0 ? '+' : ev.ganho < 0 ? '−' : '') + Math.abs(ev.ganho).toFixed(1).replace('.', ',') + ')';
+          var tDir = txt(X(2) + 12, yDir + 4, rotuloDir, { class: 'g-value', 'text-anchor': 'start', fill: ev.ganho > 0 ? '#2f8f5b' : (ev.ganho < 0 ? '#c05746' : '#5b6470') });
+          g.appendChild(tDir);
+          /* leve guia ligando o rótulo deslocado ao ponto */
+          if (ev.mb != null && Math.abs(yDir - Y(ev.mb)) > 3) {
+            g.appendChild(el('line', { x1: X(2) + 4, y1: Y(ev.mb), x2: X(2) + 9, y2: yDir, stroke: cor, 'stroke-width': 1, opacity: .6 }));
+          }
         }
         var hit = el('rect', { x: 0, y: Y(Math.max(ev.nb || 0, ev.recuperacao || 0, ev.mb || 0)) - 10, width: W, height: 22, fill: 'transparent' });
         if (opts.tooltip) {
