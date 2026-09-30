@@ -166,7 +166,8 @@ window.Charts = (function () {
 
   /**
    * opts: {
-   *   altura, series:[{id,nome,cor,valores:[num|null],destaque,muted}],
+   *   altura (número ou função), fixedWidth (largura fixa opcional),
+   *   series:[{id,nome,cor,valores:[num|null],destaque,muted}],
    *   xLabels:[str], refLine:{valor,rotulo}, yDomain:[a,b], fmtY(fn),
    *   tooltip:(idx)=>html, interativo (default true), yTitulo
    * }
@@ -179,7 +180,7 @@ window.Charts = (function () {
     clear(host);
     var H = typeof opts.altura === 'function' ? opts.altura() : (opts.altura || 300);
     var ml = 42, mr = 18, mt = 30, mb = 30;
-    var W = Math.max(280, width);
+    var W = opts.fixedWidth || Math.max(280, width);
     var iw = W - ml - mr, ih = H - mt - mb;
     var svg = el('svg', { width: W, height: H, viewBox: '0 0 ' + W + ' ' + H, role: 'img' });
     svg.appendChild(el('title', {}, [document.createTextNode(opts.aria || '')]));

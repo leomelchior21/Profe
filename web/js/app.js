@@ -502,11 +502,17 @@
     /* trajetória */
     if (CFG.relatorio.incluirTrajetoria) {
       var secT = C.secao('print-trajetoria', 'Trajetória ao longo do ano', null);
+      var layoutT = document.createElement('div');
+      layoutT.className = 'print-traj-layout';
+      var legendaT = document.createElement('div');
+      legendaT.className = 'legend static print-legend';
       var hostT = document.createElement('div');
       hostT.className = 'chart-host';
-      secT.body.appendChild(hostT);
+      layoutT.appendChild(legendaT);
+      layoutT.appendChild(hostT);
+      secT.body.appendChild(layoutT);
       var bimestres = sd.bimestres;
-      Ch_line(hostT, sd, bimestres);
+      Ch_line(hostT, legendaT, sd, bimestres);
       wrap.appendChild(secT.el);
     }
 
@@ -644,13 +650,23 @@
 
   function CONFIG_MIN_TURMA() { return CFG.limiares.minimoAlunosTurma; }
 
-  function Ch_line(host, sd, bimestres) {
+  function Ch_line(host, legenda, sd, bimestres) {
     var ref = CFG.notaReferencia;
     var Ch = window.Charts;
     var cores = V.mapaCores(sd);
 
+    /* a mesma cor identifica cada disciplina no gráfico e na tabela */
+    sd.numericas.forEach(function (m) {
+      var sp = document.createElement('span');
+      sp.className = 'legend-chip';
+      sp.innerHTML = '<i style="background:' + cores[m.nome] + '"></i>' + C.esc(m.rotulo);
+      legenda.appendChild(sp);
+    });
+
     Ch.lineChart(host, {
-      altura: 260, interativo: false,
+      /* largura útil no A4 depois da legenda lateral */
+      fixedWidth: 530,
+      altura: function () { return Math.max(260, Math.ceil(legenda.getBoundingClientRect().height)); }, interativo: false,
       series: sd.numericas.map(function (m) {
         return {
           id: m.nome, nome: m.rotulo,
@@ -667,16 +683,6 @@
       aria: 'Trajetória das notas por disciplina'
     });
 
-    /* a mesma cor identifica cada disciplina no gráfico e na tabela */
-    var leg = document.createElement('div');
-    leg.className = 'legend static print-legend';
-    sd.numericas.forEach(function (m) {
-      var sp = document.createElement('span');
-      sp.className = 'legend-chip';
-      sp.innerHTML = '<i style="background:' + cores[m.nome] + '"></i>' + C.esc(m.rotulo);
-      leg.appendChild(sp);
-    });
-    host.parentNode.appendChild(leg);
   }
 
   /* -------------------------------------------------------------- eventos */

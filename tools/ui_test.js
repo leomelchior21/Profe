@@ -307,6 +307,12 @@ async function run() {
   check(JSON.stringify(printDisciplineData.variationRows) === JSON.stringify(printDisciplineData.expectedVariationRows), 'print variation table includes every discipline and consecutive period');
   check(printDisciplineData.legendNames.length === printDisciplineData.expected && new Set(printDisciplineData.legendColors).size === printDisciplineData.expected && printDisciplineData.lineColors.length === printDisciplineData.expected, 'print legend identifies every plotted discipline with a distinct color: ' + JSON.stringify({ expected: printDisciplineData.expected, names: printDisciplineData.legendNames.length, colors: new Set(printDisciplineData.legendColors).size, lines: printDisciplineData.lineColors.length }));
   await page.emulateMedia({ media: 'print' });
+  check(await page.locator('#print-trajetoria').evaluate(section => {
+    const legend = section.querySelector('.print-legend').getBoundingClientRect();
+    const chart = section.querySelector('.chart-host').getBoundingClientRect();
+    const svg = section.querySelector('.chart-host svg');
+    return legend.right < chart.left && Math.abs(legend.top - chart.top) < 3 && Number(svg.getAttribute('width')) === 530;
+  }), 'printed trajectory places the discipline legend beside the chart');
   await page.pdf({ path: path.join(out, 'resumo.pdf'), format: 'A4', printBackground: true });
   await page.emulateMedia({ media: 'screen' });
   await page.keyboard.press('Escape');

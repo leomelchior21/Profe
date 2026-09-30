@@ -1132,9 +1132,17 @@ button.kpi:hover { transform: translateY(-3px); box-shadow: 0 16px 34px rgba(16,
 .print-report .card { box-shadow: none; background: #fff; padding: 0 0 18px; border-bottom: 1.5px solid var(--linha); border-radius: 0; }
 .print-report .card-desc { margin-bottom: 10px; }
 
-.print-legend { gap: 5px 12px; margin: 10px 0 2px; }
-.print-legend .legend-chip { gap: 6px; min-height: 24px; padding: 2px 0; background: transparent; color: var(--tinta); font-size: 11px; }
+.print-traj-layout { display: grid; grid-template-columns: 172px minmax(0, 1fr); gap: 18px; align-items: start; }
+.print-traj-layout .chart-host { min-width: 0; }
+.print-traj-layout .chart-host svg { width: 100%; height: auto; }
+.print-legend { flex-direction: column; gap: 3px; margin: 0; }
+.print-legend .legend-chip { width: 100%; gap: 6px; min-height: 21px; padding: 2px 0; background: transparent; color: var(--tinta); font-size: 10.5px; }
 .print-legend .legend-chip i { width: 19px; height: 4px; border-radius: 2px; flex: 0 0 auto; }
+@media screen and (max-width: 700px) {
+  .print-traj-layout { grid-template-columns: minmax(0, 1fr); gap: 10px; }
+  .print-legend { flex-direction: row; flex-wrap: wrap; }
+  .print-legend .legend-chip { width: auto; }
+}
 
 .print-disciplines { width: 100%; border-collapse: collapse; font-size: 12px; font-variant-numeric: tabular-nums; }
 .print-disciplines th, .print-disciplines td { padding: 7px 8px; border-bottom: 1px solid var(--linha); }

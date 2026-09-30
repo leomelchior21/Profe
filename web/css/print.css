@@ -59,6 +59,7 @@
   .print-report .heat th { font-size: 10px !important; }
   .print-report .data-table { font-size: 10px !important; }
   .print-report .tooltip { display: none !important; }
+  .print-report .print-traj-layout { grid-template-columns: 150px minmax(0, 1fr); gap: 14px; break-inside: avoid; }
   .print-report .print-legend .legend-chip { break-inside: avoid; }
   .print-report .print-disciplines { font-size: 10.5px !important; }
   .print-report .print-disciplines th,
