@@ -10,3 +10,6 @@ data/
 source/
 web/js/dados.js
 web/js/vendor/vercel-analytics.js
+web/js/vendor/html2canvas.min.js
+web/js/vendor/jspdf.umd.min.js
+web/js/vendor/jszip.min.js

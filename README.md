@@ -17,7 +17,7 @@ A senha de acesso é a definida para a escola. Ela desbloqueia o dataset criptog
 - **Padrões:** variações, consistência e áreas curriculares.
 - **Dados:** registros e origem dos valores.
 
-O painel pede a seleção de um ano escolar antes de mostrar resultados. Após a escolha, mantém todas as análises em uma página contínua; os botões no rodapé levam às seções. Sem aluno selecionado, mostra as turmas daquele ano. Limpar os filtros ou retirar o ano selecionado volta à tela de seleção. O modo reunião e o resumo impresso mostram o percurso anual do estudante.
+O painel pede a seleção de um ano escolar antes de mostrar resultados. Após a escolha, mantém todas as análises em uma página contínua; os botões no rodapé levam às seções. Sem aluno selecionado, mostra as turmas daquele ano. Limpar os filtros ou retirar o ano selecionado volta à tela de seleção. O modo reunião e o resumo impresso mostram o percurso anual do estudante. Com um aluno selecionado, **Gerar resumo** abre esse resumo para impressão; com apenas a turma selecionada, o botão vira **Gerar resumos da turma** e baixa um ZIP com um PDF por aluno, montado localmente no navegador.
 
 Antes de **Como ler este modo**, **Merecem atenção** mostra quatro listas de até 20 alunos: maiores médias, menores médias, menores oscilações e maiores oscilações. As duas listas de médias têm seletores independentes de média geral, Ciências exatas, Ciências humanas e Linguagens. Ciências exatas reúne Matemática e as disciplinas de Ciências da Natureza disponíveis naquele ano. Os rankings respeitam ano, turma e disciplina; os de médias também respeitam o bimestre em foco.
 

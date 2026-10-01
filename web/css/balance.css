@@ -98,7 +98,6 @@
 .nav-tab, .btn, .dd-btn { min-height: 40px; }
 .app-foot .nav-tabs { flex: 0 0 auto; }
 .app-foot .foot-actions { min-width: max-content; }
-.app-foot .foot-actions #btn-resumo-mais { flex: 0 0 40px; }
 .meeting-body > * { width: min(100%, 1180px); }
 .print-report { max-width: min(96vw, 920px); }
 

@@ -6,9 +6,9 @@
 <meta name="color-scheme" content="light">
 <title>Profe · Painel de aprendizagem</title>
 <link rel="icon" type="image/svg+xml" href="favicon.svg">
-<link rel="stylesheet" href="css/app.css?v=fec344a823a7">
-<link rel="stylesheet" href="css/balance.css?v=fec344a823a7">
-<link rel="stylesheet" href="css/print.css?v=fec344a823a7" media="print">
+<link rel="stylesheet" href="css/app.css?v=c759511f1c2b">
+<link rel="stylesheet" href="css/balance.css?v=c759511f1c2b">
+<link rel="stylesheet" href="css/print.css?v=c759511f1c2b" media="print">
 </head>
 <body>
 
@@ -93,9 +93,6 @@
       <span id="nav-aluno" class="nav-aluno"></span>
       <button type="button" id="btn-reuniao" class="btn">Modo reunião</button>
       <button type="button" id="btn-resumo" class="btn primary">Gerar resumo</button>
-      <button type="button" id="btn-resumo-mais" class="btn icon" aria-haspopup="menu" aria-expanded="false" aria-label="Mais opções de resumo" title="Mais opções de resumo" disabled>
-        <svg viewBox="0 0 24 24" aria-hidden="true" focusable="false"><circle cx="12" cy="5" r="1.8"/><circle cx="12" cy="12" r="1.8"/><circle cx="12" cy="19" r="1.8"/></svg>
-      </button>
     </div>
     <span class="visually-hidden">Dados individuais de estudantes — uso interno da escola. Todo o processamento acontece localmente neste navegador.</span>
   </footer>
@@ -131,18 +128,37 @@
   <div id="printReport"></div>
 </div>
 
+<!-- ======================= RESUMOS DA TURMA (ZIP) ======================== -->
+<div id="exportOverlay" class="export-overlay" aria-hidden="true" role="dialog" aria-modal="true" aria-label="Gerar resumos da turma">
+  <div class="export-card">
+    <span class="export-eyebrow">Resumos da turma</span>
+    <h2 id="export-title">Preparando…</h2>
+    <p id="export-status" class="export-status" role="status" aria-live="polite"></p>
+    <div class="export-bar" aria-hidden="true"><i id="export-bar-fill"></i></div>
+    <div class="export-actions">
+      <button type="button" id="export-cancel" class="btn">Cancelar</button>
+    </div>
+  </div>
+</div>
+
+<!-- palco fora da tela usado para montar cada resumo antes de virar PDF -->
+<div id="exportStage" class="export-stage" aria-hidden="true"></div>
+
 <noscript>
   <div style="padding:24px;font-family:sans-serif">Este painel precisa de JavaScript habilitado para funcionar (todo o processamento é local).</div>
 </noscript>
 
-<script src="js/dados.enc.js?v=fec344a823a7"></script>
-<script src="js/config.js?v=fec344a823a7"></script>
-<script src="js/analytics.js?v=fec344a823a7"></script>
-<script src="js/charts.js?v=fec344a823a7"></script>
-<script src="js/components.js?v=fec344a823a7"></script>
-<script src="js/views.js?v=fec344a823a7"></script>
-<script src="js/app.js?v=fec344a823a7"></script>
-<script src="js/auth.js?v=fec344a823a7"></script>
-<script type="module" src="js/analytics-init.js?v=fec344a823a7"></script>
+<script src="js/dados.enc.js?v=c759511f1c2b"></script>
+<script src="js/vendor/html2canvas.min.js?v=c759511f1c2b"></script>
+<script src="js/vendor/jspdf.umd.min.js?v=c759511f1c2b"></script>
+<script src="js/vendor/jszip.min.js?v=c759511f1c2b"></script>
+<script src="js/config.js?v=c759511f1c2b"></script>
+<script src="js/analytics.js?v=c759511f1c2b"></script>
+<script src="js/charts.js?v=c759511f1c2b"></script>
+<script src="js/components.js?v=c759511f1c2b"></script>
+<script src="js/views.js?v=c759511f1c2b"></script>
+<script src="js/app.js?v=c759511f1c2b"></script>
+<script src="js/auth.js?v=c759511f1c2b"></script>
+<script type="module" src="js/analytics-init.js?v=c759511f1c2b"></script>
 </body>
 </html>

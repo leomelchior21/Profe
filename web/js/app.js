@@ -222,8 +222,10 @@
     $('scope-line').textContent = anoSelecionado ? partes.join('  ·  ') : 'Selecione um ano';
 
     $('btn-reuniao').disabled = !state.filtros.aluno;
-    $('btn-resumo').disabled = !state.filtros.aluno;
-    $('btn-resumo-mais').disabled = !turmaDoEscopo();
+    /* sem aluno, o botão gera um ZIP com um PDF por aluno da turma em foco */
+    var turmaResumo = turmaDoEscopo();
+    $('btn-resumo').disabled = !state.filtros.aluno && !turmaResumo;
+    $('btn-resumo').textContent = state.filtros.aluno ? 'Gerar resumo' : 'Gerar resumos da turma';
 
     atualizarDropdowns();
   }
@@ -431,9 +433,6 @@
 
   /* --------------------------------------------------------- relatório impresso */
 
-  var relatorioOrigem = 'aluno';
-  var relatorioToken = 0;
-
   function abrirOverlayRelatorio(rotulo) {
     var ov = $('printOverlay');
     ov.classList.add('open');
@@ -451,10 +450,9 @@
   }
 
   /* ações fixas no topo, fora da impressão */
-  function montarAcoesRelatorio(report, status) {
+  function montarAcoesRelatorio(report) {
     var acoes = document.createElement('div');
     acoes.className = 'print-actions';
-    if (status) acoes.appendChild(status);
     var btPrint = document.createElement('button');
     btPrint.className = 'btn primary';
     btPrint.textContent = 'Imprimir / salvar PDF';
@@ -466,13 +464,10 @@
     acoes.appendChild(btPrint); acoes.appendChild(btClose);
     report.appendChild(acoes);
     btClose.focus();
-    return btPrint;
   }
 
   function abrirRelatorio() {
     if (!state.filtros.aluno) return;
-    relatorioOrigem = state.meeting ? 'meeting' : 'aluno';
-    relatorioToken++;
     var report = abrirOverlayRelatorio('Resumo do aluno para impressão');
     montarAcoesRelatorio(report);
     var ctx = buildCtx(false);
@@ -481,62 +476,7 @@
     setTimeout(function () { montarRelatorio(report, ctx); }, 30);
   }
 
-  /* um resumo completo por aluno da turma em foco, prontos para imprimir de uma vez */
-  function abrirRelatorioTurma() {
-    var turma = turmaDoEscopo();
-    if (!turma) return;
-    var scope = { anoLetivo: state.filtros.anoLetivo, ano: state.filtros.ano, turma: turma };
-    var alunos = A.Store.alunosDoEscopo(scope).slice().sort(function (a, b) {
-      return a.nome.localeCompare(b.nome, 'pt-BR');
-    });
-    if (!alunos.length) return;
-
-    relatorioOrigem = 'turma';
-    var token = ++relatorioToken;
-    var report = abrirOverlayRelatorio('Resumo da turma ' + turma + ' para impressão');
-    var status = document.createElement('span');
-    status.className = 'print-status';
-    status.setAttribute('role', 'status');
-    status.textContent = 'Preparando ' + alunos.length + (alunos.length === 1 ? ' resumo…' : ' resumos…');
-    var btPrint = montarAcoesRelatorio(report, status);
-    btPrint.disabled = true;
-
-    var cd = null;
-    for (var j = 0; j < alunos.length && !cd; j++) {
-      var sdBase = A.Store.studentData(alunos[j].ra, scope);
-      if (sdBase) cd = V.classData(sdBase);
-    }
-
-    var i = 0;
-    function proximo() {
-      if (token !== relatorioToken) return;
-      if (i >= alunos.length) {
-        status.textContent = alunos.length + (alunos.length === 1 ? ' resumo pronto' : ' resumos prontos') + ' — use "Imprimir / salvar PDF".';
-        btPrint.disabled = false;
-        return;
-      }
-      var sd = A.Store.studentData(alunos[i].ra, scope);
-      i++;
-      if (sd) {
-        montarRelatorio(report, {
-          sd: sd, scope: scope,
-          filtros: { disciplina: '', bimestre: '' },
-          state: state, meeting: false,
-          rerender: function () { render(); },
-          onNavegarAluno: selecionarAluno,
-          onFiltrarDisciplina: function () {},
-          onFiltrarSituacao: function () {},
-          classData: cd
-        });
-      }
-      status.textContent = 'Preparando resumos… ' + i + ' de ' + alunos.length;
-      setTimeout(proximo, 0);
-    }
-    setTimeout(proximo, 30);
-  }
-
   function fecharRelatorio() {
-    relatorioToken++;
     var ov = $('printOverlay');
     ov.classList.remove('open');
     document.body.classList.remove('printing');
@@ -544,8 +484,216 @@
     window.Charts.dispose($('printReport'));
     $('app').inert = state.meeting;
     $('meeting').inert = false;
-    if (relatorioOrigem === 'turma') $('btn-resumo-mais').focus();
-    else (state.meeting ? $('meeting-print') : $('btn-resumo')).focus();
+    (state.meeting ? $('meeting-print') : $('btn-resumo')).focus();
+  }
+
+  /* -------------------------------------------------- resumos da turma (ZIP) */
+
+  var exportToken = 0;
+  var PDF_ESCALA = 1.6;
+  var PDF_QUALIDADE = 0.9;
+  var PDF_MARGEM_X = 11;
+  var PDF_MARGEM_Y = 13;
+  var PDF_UTIL_W = 210 - PDF_MARGEM_X * 2;
+  var PDF_UTIL_H = 297 - PDF_MARGEM_Y * 2;
+
+  function pausaUi() {
+    return new Promise(function (resolve) { setTimeout(resolve, 0); });
+  }
+
+  function limparNome(valor) {
+    return String(valor == null ? '' : valor)
+      .replace(/[\\/:*?"<>|]+/g, ' ')
+      .replace(/\s+/g, ' ')
+      .replace(/^\.+|\.+$/g, '')
+      .trim();
+  }
+
+  function nomePdf(turma, nome, usados) {
+    var base = limparNome(nome) || 'Aluno';
+    var chave = limparNome(turma) + '|' + base.toLowerCase();
+    if (usados[chave]) base += ' (' + (++usados[chave]) + ')';
+    else usados[chave] = 1;
+    return 'Resumo ' + limparNome(turma) + ' - ' + base + '.pdf';
+  }
+
+  function baixarBlob(blob, nome) {
+    var url = URL.createObjectURL(blob);
+    var a = document.createElement('a');
+    a.href = url;
+    a.download = nome;
+    document.body.appendChild(a);
+    a.click();
+    a.remove();
+    setTimeout(function () { URL.revokeObjectURL(url); }, 30000);
+  }
+
+  function ctxDoAluno(sd, scope, cd) {
+    return {
+      sd: sd, scope: scope,
+      filtros: { disciplina: '', bimestre: '' },
+      state: state, meeting: false,
+      rerender: function () { render(); },
+      onNavegarAluno: selecionarAluno,
+      onFiltrarDisciplina: function () {},
+      onFiltrarSituacao: function () {},
+      classData: cd
+    };
+  }
+
+  /* pontos seguros para virar a página: início de seções e linhas de tabela */
+  function cortesDePagina(wrap, canvas, fatia) {
+    var rect = wrap.getBoundingClientRect();
+    var escala = canvas.width / rect.width;
+    var candidatos = [];
+    var alvos = wrap.querySelectorAll('.print-report > *, .print-report tr, .print-report .print-stats > div');
+    Array.prototype.forEach.call(alvos, function (el) {
+      var topo = Math.round((el.getBoundingClientRect().top - rect.top) * escala);
+      if (topo > 0 && topo < canvas.height) candidatos.push(topo);
+    });
+    candidatos.sort(function (a, b) { return a - b; });
+
+    var cortes = [0];
+    var anterior = 0;
+    while (anterior < canvas.height - 1) {
+      var alvo = anterior + fatia;
+      if (alvo >= canvas.height) break;
+      var corte = alvo;
+      for (var c = candidatos.length - 1; c >= 0; c--) {
+        var cand = candidatos[c];
+        if (cand <= alvo && cand >= anterior + fatia * 0.55) { corte = cand; break; }
+      }
+      cortes.push(corte);
+      anterior = corte;
+    }
+    cortes.push(canvas.height);
+    return cortes;
+  }
+
+  /* monta o resumo do aluno fora da tela e devolve um PDF A4 completo */
+  async function pdfDoAluno(sd, scope, cd) {
+    var host = document.createElement('div');
+    $('exportStage').appendChild(host);
+    montarRelatorio(host, ctxDoAluno(sd, scope, cd));
+    await new Promise(function (resolve) {
+      requestAnimationFrame(function () { requestAnimationFrame(resolve); });
+    });
+
+    var wrap = host.querySelector('.print-report');
+    var canvas = await window.html2canvas(wrap, {
+      scale: PDF_ESCALA,
+      backgroundColor: '#ffffff',
+      useCORS: true,
+      logging: false
+    });
+    var pxPorMm = canvas.width / PDF_UTIL_W;
+    var cortes = cortesDePagina(wrap, canvas, Math.max(1, Math.floor(PDF_UTIL_H * pxPorMm)));
+    window.Charts.dispose(host);
+    host.remove();
+
+    var pdf = new window.jspdf.jsPDF({ unit: 'mm', format: 'a4', orientation: 'portrait' });
+    for (var p = 0; p < cortes.length - 1; p++) {
+      var y = cortes[p];
+      var h = cortes[p + 1] - y;
+      var pagina = document.createElement('canvas');
+      pagina.width = canvas.width;
+      pagina.height = h;
+      var cx = pagina.getContext('2d');
+      cx.fillStyle = '#ffffff';
+      cx.fillRect(0, 0, pagina.width, pagina.height);
+      cx.drawImage(canvas, 0, y, canvas.width, h, 0, 0, canvas.width, h);
+      if (p) pdf.addPage();
+      pdf.addImage(pagina.toDataURL('image/jpeg', PDF_QUALIDADE), 'JPEG', PDF_MARGEM_X, PDF_MARGEM_Y, PDF_UTIL_W, h / pxPorMm);
+      pagina.width = 0;
+      pagina.height = 0;
+    }
+    canvas.width = 0;
+    canvas.height = 0;
+    return pdf.output('blob');
+  }
+
+  function atualizarExport(feitos, total, texto) {
+    $('export-status').textContent = texto || (feitos + ' de ' + total + ' resumos gerados');
+    $('export-bar-fill').style.width = (total ? Math.round(feitos / total * 100) : 0) + '%';
+  }
+
+  function abrirExport(turma, total) {
+    $('export-title').textContent = 'Resumos da turma ' + turma;
+    atualizarExport(0, total, 'Preparando ' + total + ' PDFs…');
+    var ov = $('exportOverlay');
+    ov.classList.add('open');
+    ov.setAttribute('aria-hidden', 'false');
+    $('app').inert = true;
+    $('export-cancel').focus();
+  }
+
+  function fecharExport() {
+    exportToken++;
+    var ov = $('exportOverlay');
+    ov.classList.remove('open');
+    ov.setAttribute('aria-hidden', 'true');
+    $('app').inert = false;
+    $('exportStage').innerHTML = '';
+    $('btn-resumo').focus();
+  }
+
+  /* um PDF por aluno, compactados em um único ZIP */
+  async function exportarResumosTurma() {
+    var turma = turmaDoEscopo();
+    if (!turma) return;
+    var scope = { anoLetivo: state.filtros.anoLetivo, ano: state.filtros.ano, turma: turma };
+    var alunos = A.Store.alunosDoEscopo(scope).slice().sort(function (a, b) {
+      return a.nome.localeCompare(b.nome, 'pt-BR');
+    });
+    if (!alunos.length) return;
+    if (!window.html2canvas || !window.jspdf || !window.JSZip) {
+      abrirExport(turma, 0);
+      $('export-status').textContent = 'Recursos de PDF indisponíveis. Recarregue a página.';
+      return;
+    }
+
+    var token = ++exportToken;
+    abrirExport(turma, alunos.length);
+
+    var cd = null;
+    for (var j = 0; j < alunos.length && !cd; j++) {
+      var sdBase = A.Store.studentData(alunos[j].ra, scope);
+      if (sdBase) cd = V.classData(sdBase);
+    }
+
+    var zip = new window.JSZip();
+    var usados = {};
+    try {
+      for (var i = 0; i < alunos.length; i++) {
+        if (token !== exportToken) return;
+        atualizarExport(i, alunos.length, 'Gerando PDF de ' + alunos[i].nome + ' (' + (i + 1) + ' de ' + alunos.length + ')…');
+        await pausaUi();
+        var sd = A.Store.studentData(alunos[i].ra, scope);
+        if (sd) {
+          var blob = await pdfDoAluno(sd, scope, cd);
+          if (token !== exportToken) return;
+          zip.file(nomePdf(turma, alunos[i].nome, usados), blob);
+        }
+        atualizarExport(i + 1, alunos.length);
+      }
+      if (token !== exportToken) return;
+      atualizarExport(alunos.length, alunos.length, 'Compactando ' + alunos.length + ' PDFs…');
+      await pausaUi();
+      var zipBlob = await zip.generateAsync({ type: 'blob', compression: 'STORE' });
+      if (token !== exportToken) return;
+      baixarBlob(zipBlob, 'Resumos ' + limparNome(turma) + '.zip');
+      fecharExport();
+    } catch (erro) {
+      if (token !== exportToken) return;
+      $('export-status').textContent = 'Não foi possível gerar os resumos. Tente novamente.';
+      $('export-bar-fill').style.width = '0%';
+    }
+  }
+
+  /* o botão do rodapé escolhe entre o resumo do aluno e o ZIP da turma */
+  function gerarResumo() {
+    if (state.filtros.aluno) abrirRelatorio();
+    else exportarResumosTurma();
   }
 
   function montarRelatorio(host, ctx) {
@@ -768,81 +916,6 @@
 
   }
 
-  /* ----------------------------------------------------- menu do resumo (⋯) */
-
-  var menuResumo = null;
-
-  function montarMenuResumo() {
-    var btn = $('btn-resumo-mais');
-    var menu = document.createElement('div');
-    menu.className = 'resumo-menu';
-    menu.setAttribute('role', 'menu');
-    menu.setAttribute('aria-label', 'Mais opções de resumo');
-    var item = document.createElement('button');
-    item.type = 'button';
-    item.id = 'btn-resumo-turma';
-    item.className = 'resumo-menu-item';
-    item.setAttribute('role', 'menuitem');
-    item.addEventListener('click', function () {
-      fecharMenuResumo();
-      abrirRelatorioTurma();
-    });
-    menu.appendChild(item);
-    document.body.appendChild(menu);
-    menuResumo = { btn: btn, menu: menu, item: item };
-
-    btn.addEventListener('click', function (e) {
-      e.stopPropagation();
-      if (menu.classList.contains('aberto')) { fecharMenuResumo(); btn.focus(); }
-      else abrirMenuResumo();
-    });
-    btn.addEventListener('keydown', function (e) {
-      if (e.key === 'ArrowDown' || e.key === 'ArrowUp' || e.key === 'Enter' || e.key === ' ') {
-        e.preventDefault();
-        abrirMenuResumo();
-      } else if (e.key === 'Escape') {
-        fecharMenuResumo();
-      }
-    });
-    menu.addEventListener('keydown', function (e) {
-      if (e.key === 'Escape') { fecharMenuResumo(); btn.focus(); }
-      else if (e.key === 'Tab') { fecharMenuResumo(); }
-    });
-    document.addEventListener('click', fecharMenuResumo);
-    window.addEventListener('resize', fecharMenuResumo);
-    window.addEventListener('scroll', fecharMenuResumo, { passive: true });
-  }
-
-  function atualizarMenuResumo() {
-    if (!menuResumo) return;
-    var turma = turmaDoEscopo();
-    var n = turma ? A.Store.alunosDoEscopo({ anoLetivo: state.filtros.anoLetivo, ano: state.filtros.ano, turma: turma }).length : 0;
-    menuResumo.item.textContent = turma
-      ? 'Resumo da turma ' + turma + ' (' + n + (n === 1 ? ' aluno)' : ' alunos)')
-      : 'Resumo da turma toda';
-    menuResumo.item.disabled = !n;
-    menuResumo.btn.disabled = !n;
-  }
-
-  function abrirMenuResumo() {
-    atualizarMenuResumo();
-    if (menuResumo.item.disabled) return;
-    var m = menuResumo.menu;
-    m.classList.add('aberto');
-    menuResumo.btn.setAttribute('aria-expanded', 'true');
-    var r = menuResumo.btn.getBoundingClientRect();
-    var w = m.offsetWidth;
-    m.style.left = Math.round(Math.max(12, Math.min(r.right - w, window.innerWidth - w - 12))) + 'px';
-    m.style.top = Math.round(Math.max(12, r.top - m.offsetHeight - 8)) + 'px';
-    menuResumo.item.focus();
-  }
-
-  function fecharMenuResumo() {
-    if (!menuResumo) return;
-    menuResumo.menu.classList.remove('aberto');
-    menuResumo.btn.setAttribute('aria-expanded', 'false');
-  }
-
   /* -------------------------------------------------------------- eventos */
 
   function bind() {
@@ -885,8 +958,8 @@
       document.querySelector('.filterbar').scrollLeft = 0;
     });
     $('btn-reuniao').addEventListener('click', abrirReuniao);
-    $('btn-resumo').addEventListener('click', abrirRelatorio);
-    montarMenuResumo();
+    $('btn-resumo').addEventListener('click', gerarResumo);
+    $('export-cancel').addEventListener('click', fecharExport);
     $('meeting-close').addEventListener('click', fecharReuniao);
     $('meeting-prev').addEventListener('click', function () { passo(-1); });
     $('meeting-next').addEventListener('click', function () { passo(1); });

@@ -4,13 +4,20 @@ const fs = require('node:fs');
 const path = require('node:path');
 const crypto = require('node:crypto');
 
-// Publish the browser module from the installed package with the static site.
-const packageRoot = path.dirname(require.resolve('@vercel/analytics/package.json'));
-const source = path.join(packageRoot, 'dist', 'index.mjs');
-const target = path.resolve(__dirname, '../web/js/vendor/vercel-analytics.js');
-fs.mkdirSync(path.dirname(target), { recursive: true });
-fs.copyFileSync(source, target);
-console.log('Vercel Analytics browser module ready.');
+// Publish browser modules from installed packages with the static site.
+const vendored = [
+  ['@vercel/analytics', 'dist/index.mjs', 'vercel-analytics.js'],
+  ['jspdf', 'dist/jspdf.umd.min.js', 'jspdf.umd.min.js'],
+  ['html2canvas', 'dist/html2canvas.min.js', 'html2canvas.min.js'],
+  ['jszip', 'dist/jszip.min.js', 'jszip.min.js']
+];
+for (const [pkg, entry, name] of vendored) {
+  const packageRoot = path.dirname(require.resolve(pkg + '/package.json'));
+  const target = path.resolve(__dirname, '../web/js/vendor/' + name);
+  fs.mkdirSync(path.dirname(target), { recursive: true });
+  fs.copyFileSync(path.join(packageRoot, entry), target);
+}
+console.log('Browser vendor modules ready: ' + vendored.map(v => v[2]).join(', '));
 
 // Conteúdo novo recebe URLs novas, evitando scripts antigos após uma publicação.
 const web = path.resolve(__dirname, '../web');
