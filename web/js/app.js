@@ -26,6 +26,16 @@
     return { anoLetivo: state.filtros.anoLetivo, ano: state.filtros.ano, turma: state.filtros.turma };
   }
 
+  /* turma em foco: a do filtro ou, sem filtro, a do aluno selecionado */
+  function turmaDoEscopo() {
+    if (state.filtros.turma) return state.filtros.turma;
+    if (state.filtros.aluno) {
+      var al = A.Store.aluno(state.filtros.aluno);
+      if (al) return al.turma;
+    }
+    return '';
+  }
+
   function selecionaOpcao(sel, valor, rotulo) {
     var op = document.createElement('option');
     op.value = valor;
@@ -213,6 +223,7 @@
 
     $('btn-reuniao').disabled = !state.filtros.aluno;
     $('btn-resumo').disabled = !state.filtros.aluno;
+    $('btn-resumo-mais').disabled = !turmaDoEscopo();
 
     atualizarDropdowns();
   }
@@ -420,25 +431,30 @@
 
   /* --------------------------------------------------------- relatório impresso */
 
-  function abrirRelatorio() {
-    if (!state.filtros.aluno) return;
+  var relatorioOrigem = 'aluno';
+  var relatorioToken = 0;
+
+  function abrirOverlayRelatorio(rotulo) {
     var ov = $('printOverlay');
     ov.classList.add('open');
     ov.setAttribute('aria-hidden', 'false');
     ov.setAttribute('role', 'dialog');
     ov.setAttribute('aria-modal', 'true');
-    ov.setAttribute('aria-label', 'Resumo para impressão');
+    ov.setAttribute('aria-label', rotulo || 'Resumo para impressão');
     $('app').inert = true;
     $('meeting').inert = true;
     document.body.classList.add('printing');
     var report = $('printReport');
     window.Charts.dispose(report);
     report.innerHTML = '';
-    var ctx = buildCtx(false);
+    return report;
+  }
 
-    /* ações (fixas no topo, fora da impressão) */
+  /* ações fixas no topo, fora da impressão */
+  function montarAcoesRelatorio(report, status) {
     var acoes = document.createElement('div');
     acoes.className = 'print-actions';
+    if (status) acoes.appendChild(status);
     var btPrint = document.createElement('button');
     btPrint.className = 'btn primary';
     btPrint.textContent = 'Imprimir / salvar PDF';
@@ -450,19 +466,86 @@
     acoes.appendChild(btPrint); acoes.appendChild(btClose);
     report.appendChild(acoes);
     btClose.focus();
+    return btPrint;
+  }
+
+  function abrirRelatorio() {
+    if (!state.filtros.aluno) return;
+    relatorioOrigem = state.meeting ? 'meeting' : 'aluno';
+    relatorioToken++;
+    var report = abrirOverlayRelatorio('Resumo do aluno para impressão');
+    montarAcoesRelatorio(report);
+    var ctx = buildCtx(false);
 
     /* monta depois do layout para os gráficos calcularem a largura corretamente */
     setTimeout(function () { montarRelatorio(report, ctx); }, 30);
   }
 
+  /* um resumo completo por aluno da turma em foco, prontos para imprimir de uma vez */
+  function abrirRelatorioTurma() {
+    var turma = turmaDoEscopo();
+    if (!turma) return;
+    var scope = { anoLetivo: state.filtros.anoLetivo, ano: state.filtros.ano, turma: turma };
+    var alunos = A.Store.alunosDoEscopo(scope).slice().sort(function (a, b) {
+      return a.nome.localeCompare(b.nome, 'pt-BR');
+    });
+    if (!alunos.length) return;
+
+    relatorioOrigem = 'turma';
+    var token = ++relatorioToken;
+    var report = abrirOverlayRelatorio('Resumo da turma ' + turma + ' para impressão');
+    var status = document.createElement('span');
+    status.className = 'print-status';
+    status.setAttribute('role', 'status');
+    status.textContent = 'Preparando ' + alunos.length + (alunos.length === 1 ? ' resumo…' : ' resumos…');
+    var btPrint = montarAcoesRelatorio(report, status);
+    btPrint.disabled = true;
+
+    var cd = null;
+    for (var j = 0; j < alunos.length && !cd; j++) {
+      var sdBase = A.Store.studentData(alunos[j].ra, scope);
+      if (sdBase) cd = V.classData(sdBase);
+    }
+
+    var i = 0;
+    function proximo() {
+      if (token !== relatorioToken) return;
+      if (i >= alunos.length) {
+        status.textContent = alunos.length + (alunos.length === 1 ? ' resumo pronto' : ' resumos prontos') + ' — use "Imprimir / salvar PDF".';
+        btPrint.disabled = false;
+        return;
+      }
+      var sd = A.Store.studentData(alunos[i].ra, scope);
+      i++;
+      if (sd) {
+        montarRelatorio(report, {
+          sd: sd, scope: scope,
+          filtros: { disciplina: '', bimestre: '' },
+          state: state, meeting: false,
+          rerender: function () { render(); },
+          onNavegarAluno: selecionarAluno,
+          onFiltrarDisciplina: function () {},
+          onFiltrarSituacao: function () {},
+          classData: cd
+        });
+      }
+      status.textContent = 'Preparando resumos… ' + i + ' de ' + alunos.length;
+      setTimeout(proximo, 0);
+    }
+    setTimeout(proximo, 30);
+  }
+
   function fecharRelatorio() {
+    relatorioToken++;
     var ov = $('printOverlay');
     ov.classList.remove('open');
     document.body.classList.remove('printing');
     ov.setAttribute('aria-hidden', 'true');
+    window.Charts.dispose($('printReport'));
     $('app').inert = state.meeting;
     $('meeting').inert = false;
-    (state.meeting ? $('meeting-print') : $('btn-resumo')).focus();
+    if (relatorioOrigem === 'turma') $('btn-resumo-mais').focus();
+    else (state.meeting ? $('meeting-print') : $('btn-resumo')).focus();
   }
 
   function montarRelatorio(host, ctx) {
@@ -685,6 +768,81 @@
 
   }
 
+  /* ----------------------------------------------------- menu do resumo (⋯) */
+
+  var menuResumo = null;
+
+  function montarMenuResumo() {
+    var btn = $('btn-resumo-mais');
+    var menu = document.createElement('div');
+    menu.className = 'resumo-menu';
+    menu.setAttribute('role', 'menu');
+    menu.setAttribute('aria-label', 'Mais opções de resumo');
+    var item = document.createElement('button');
+    item.type = 'button';
+    item.id = 'btn-resumo-turma';
+    item.className = 'resumo-menu-item';
+    item.setAttribute('role', 'menuitem');
+    item.addEventListener('click', function () {
+      fecharMenuResumo();
+      abrirRelatorioTurma();
+    });
+    menu.appendChild(item);
+    document.body.appendChild(menu);
+    menuResumo = { btn: btn, menu: menu, item: item };
+
+    btn.addEventListener('click', function (e) {
+      e.stopPropagation();
+      if (menu.classList.contains('aberto')) { fecharMenuResumo(); btn.focus(); }
+      else abrirMenuResumo();
+    });
+    btn.addEventListener('keydown', function (e) {
+      if (e.key === 'ArrowDown' || e.key === 'ArrowUp' || e.key === 'Enter' || e.key === ' ') {
+        e.preventDefault();
+        abrirMenuResumo();
+      } else if (e.key === 'Escape') {
+        fecharMenuResumo();
+      }
+    });
+    menu.addEventListener('keydown', function (e) {
+      if (e.key === 'Escape') { fecharMenuResumo(); btn.focus(); }
+      else if (e.key === 'Tab') { fecharMenuResumo(); }
+    });
+    document.addEventListener('click', fecharMenuResumo);
+    window.addEventListener('resize', fecharMenuResumo);
+    window.addEventListener('scroll', fecharMenuResumo, { passive: true });
+  }
+
+  function atualizarMenuResumo() {
+    if (!menuResumo) return;
+    var turma = turmaDoEscopo();
+    var n = turma ? A.Store.alunosDoEscopo({ anoLetivo: state.filtros.anoLetivo, ano: state.filtros.ano, turma: turma }).length : 0;
+    menuResumo.item.textContent = turma
+      ? 'Resumo da turma ' + turma + ' (' + n + (n === 1 ? ' aluno)' : ' alunos)')
+      : 'Resumo da turma toda';
+    menuResumo.item.disabled = !n;
+    menuResumo.btn.disabled = !n;
+  }
+
+  function abrirMenuResumo() {
+    atualizarMenuResumo();
+    if (menuResumo.item.disabled) return;
+    var m = menuResumo.menu;
+    m.classList.add('aberto');
+    menuResumo.btn.setAttribute('aria-expanded', 'true');
+    var r = menuResumo.btn.getBoundingClientRect();
+    var w = m.offsetWidth;
+    m.style.left = Math.round(Math.max(12, Math.min(r.right - w, window.innerWidth - w - 12))) + 'px';
+    m.style.top = Math.round(Math.max(12, r.top - m.offsetHeight - 8)) + 'px';
+    menuResumo.item.focus();
+  }
+
+  function fecharMenuResumo() {
+    if (!menuResumo) return;
+    menuResumo.menu.classList.remove('aberto');
+    menuResumo.btn.setAttribute('aria-expanded', 'false');
+  }
+
   /* -------------------------------------------------------------- eventos */
 
   function bind() {
@@ -728,6 +886,7 @@
     });
     $('btn-reuniao').addEventListener('click', abrirReuniao);
     $('btn-resumo').addEventListener('click', abrirRelatorio);
+    montarMenuResumo();
     $('meeting-close').addEventListener('click', fecharReuniao);
     $('meeting-prev').addEventListener('click', function () { passo(-1); });
     $('meeting-next').addEventListener('click', function () { passo(1); });

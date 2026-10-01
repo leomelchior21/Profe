@@ -67,6 +67,9 @@
   .print-report .print-disciplines tr { break-inside: avoid; }
   .print-report .print-disciplines thead { display: table-header-group; }
 
+  /* resumo de turma: cada aluno começa em uma nova página */
+  .print-report + .print-report { break-before: page; page-break-before: always; }
+
   a, a:visited { text-decoration: none; color: #000; }
 
   .print-foot { font-size: 9.5px !important; color: #666 !important; }

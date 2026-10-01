@@ -327,6 +327,30 @@ async function run() {
   for (const [turma, total] of [['9A', 26], ['9B', 30], ['9C', 24], ['9D', 27]]) {
     await page.locator('#f-turma').selectOption(turma);
     check(await page.locator('#f-aluno option').count() === total + 1, turma + ' updated roster');
+    if (turma === '9C') {
+      check(await page.locator('#btn-resumo').isDisabled() && !(await page.locator('#btn-resumo-mais').isDisabled()), 'class summary menu available with only a class selected');
+      await page.locator('#btn-resumo-mais').click();
+      check(await page.locator('.resumo-menu.aberto').isVisible(), 'class summary menu opens beside Gerar resumo');
+      check((await page.locator('#btn-resumo-turma').textContent()) === 'Resumo da turma 9C (24 alunos)', 'class summary option names the focused class');
+      await page.screenshot({ path: path.join(out, 'resumo-turma-menu.png') });
+      await page.locator('#btn-resumo-turma').click();
+      await page.waitForFunction(n => {
+        const status = document.querySelector('#printReport .print-status');
+        return document.querySelectorAll('#printReport .print-report').length === n && status && status.textContent.includes('prontos');
+      }, total, { timeout: 60000 });
+      check(await page.locator('#printReport .print-report').count() === total, 'class summary builds one report per student');
+      check(await page.locator('#btn-resumo-mais').getAttribute('aria-expanded') === 'false', 'class summary menu closes after choosing');
+      check((await page.locator('#printReport .print-actions .print-status').textContent()).includes('prontos'), 'class summary reports progress and completion');
+      await page.emulateMedia({ media: 'print' });
+      const classReportBreak = await page.locator('#printReport .print-report').nth(1).evaluate(el => {
+        const style = getComputedStyle(el);
+        return style.breakBefore === 'page' || style.pageBreakBefore === 'always';
+      });
+      await page.emulateMedia({ media: 'screen' });
+      check(classReportBreak, 'each class report starts on a new printed page');
+      await page.keyboard.press('Escape');
+      check(await page.evaluate(() => document.activeElement && document.activeElement.id === 'btn-resumo-mais'), 'closing class summary returns focus to the menu button');
+    }
   }
   await page.locator('#f-turma').selectOption('');
   const all = await page.locator('#f-aluno option').evaluateAll(ops => ops.slice(1).map(o => o.value));
@@ -376,7 +400,7 @@ async function run() {
   check(await page.locator('#selecionar-ano').isVisible(), 'removing year selection restores prompt');
   check(await page.locator('#aluno, #coorte-resumo').count() === 0, 'removing year selection clears student and cohort results');
   check(await page.locator('#f-aluno').inputValue() === '' && await page.locator('#f-turma').inputValue() === '', 'removing year selection clears dependent selections');
-  check(await page.locator('#btn-reuniao').isDisabled() && await page.locator('#btn-resumo').isDisabled(), 'student actions unavailable without a year');
+  check(await page.locator('#btn-reuniao').isDisabled() && await page.locator('#btn-resumo').isDisabled() && await page.locator('#btn-resumo-mais').isDisabled(), 'student actions unavailable without a year');
   await page.locator('#btn-logout').click();
   await page.locator('#auth-wall').waitFor({ state: 'visible' });
   check(await page.evaluate(() => !window.SCHOOL_DATA), 'lock clears memory');
