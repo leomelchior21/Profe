@@ -490,10 +490,12 @@
   /* -------------------------------------------------- resumos da turma (ZIP) */
 
   var exportToken = 0;
-  var PDF_ESCALA = 1.6;
+  /* 695px de largura útil × 2 ≈ 192 dpi no A4 */
+  var PDF_ESCALA = 2;
   var PDF_QUALIDADE = 0.9;
-  var PDF_MARGEM_X = 11;
-  var PDF_MARGEM_Y = 13;
+  /* mesmas margens do @page (13mm laterais, 14mm topo/base) */
+  var PDF_MARGEM_X = 13;
+  var PDF_MARGEM_Y = 14;
   var PDF_UTIL_W = 210 - PDF_MARGEM_X * 2;
   var PDF_UTIL_H = 297 - PDF_MARGEM_Y * 2;
 
@@ -541,17 +543,33 @@
     };
   }
 
-  /* pontos seguros para virar a página: início de seções e linhas de tabela */
+  /* espelha a impressão do navegador: blocos que cabem numa página inteira
+     são empurrados para a seguinte; tabelas maiores quebram entre linhas */
   function cortesDePagina(wrap, canvas, fatia) {
     var rect = wrap.getBoundingClientRect();
     var escala = canvas.width / rect.width;
-    var candidatos = [];
-    var alvos = wrap.querySelectorAll('.print-report > *, .print-report tr, .print-report .print-stats > div');
+    function topo(el) { return Math.round((el.getBoundingClientRect().top - rect.top) * escala); }
+    function base(el) { return Math.round((el.getBoundingClientRect().bottom - rect.top) * escala); }
+
+    var blocos = [];
+    var pontos = [0];
+    var alvos = wrap.querySelectorAll('.card, .print-stats, .metric, .print-traj-layout, .box-cell, .insight, .print-head, .print-foot, tr, li');
     Array.prototype.forEach.call(alvos, function (el) {
-      var topo = Math.round((el.getBoundingClientRect().top - rect.top) * escala);
-      if (topo > 0 && topo < canvas.height) candidatos.push(topo);
+      var t = topo(el);
+      var b = base(el);
+      if (b <= 0 || t >= canvas.height) return;
+      pontos.push(t);
+      if (el.matches('.card, .print-stats, .metric, .print-traj-layout, tr')) blocos.push({ t: t, b: b });
     });
-    candidatos.sort(function (a, b) { return a - b; });
+    pontos.sort(function (a, b) { return a - b; });
+
+    function blocoInteiro(limite) {
+      for (var i = 0; i < blocos.length; i++) {
+        var b = blocos[i];
+        if (limite > b.t && limite < b.b && (b.b - b.t) <= fatia) return b;
+      }
+      return null;
+    }
 
     var cortes = [0];
     var anterior = 0;
@@ -559,10 +577,15 @@
       var alvo = anterior + fatia;
       if (alvo >= canvas.height) break;
       var corte = alvo;
-      for (var c = candidatos.length - 1; c >= 0; c--) {
-        var cand = candidatos[c];
-        if (cand <= alvo && cand >= anterior + fatia * 0.55) { corte = cand; break; }
+      var bloco = blocoInteiro(alvo);
+      if (bloco) {
+        corte = bloco.t;
+      } else {
+        for (var c = pontos.length - 1; c >= 0; c--) {
+          if (pontos[c] <= alvo && pontos[c] > anterior) { corte = pontos[c]; break; }
+        }
       }
+      if (corte <= anterior) corte = alvo;
       cortes.push(corte);
       anterior = corte;
     }
@@ -742,9 +765,9 @@
       layoutT.appendChild(legendaT);
       layoutT.appendChild(hostT);
       secT.body.appendChild(layoutT);
+      wrap.appendChild(secT.el);
       var bimestres = sd.bimestres;
       Ch_line(hostT, legendaT, sd, bimestres);
-      wrap.appendChild(secT.el);
     }
 
     /* notas de todas as disciplinas, sem depender do filtro do painel */
@@ -827,6 +850,7 @@
       var hostP = document.createElement('div');
       hostP.className = 'chart-host';
       secP.body.appendChild(hostP);
+      wrap.appendChild(secP.el);
       var cd = ctx.classData;
       window.Charts.hBars(hostP, {
         itens: sd.numericas.map(function (m) {
@@ -836,7 +860,6 @@
         }),
         max: 10, fmt: A.fmt1, refLine: CFG.notaReferencia != null && CFG.relatorio.incluirNotaReferencia ? { valor: CFG.notaReferencia, rotulo: 'referência' } : null
       });
-      wrap.appendChild(secP.el);
     }
 
     /* observações */

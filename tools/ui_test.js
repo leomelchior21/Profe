@@ -331,10 +331,24 @@ async function run() {
     if (turma === '9C') {
       check((await page.locator('#btn-resumo').textContent()) === 'Gerar resumos da turma' && !(await page.locator('#btn-resumo').isDisabled()), 'class button offers one PDF per student');
       const downloadPromise = page.waitForEvent('download', { timeout: 180000 });
+      await page.evaluate(() => {
+        const orig = window.html2canvas;
+        window.html2canvas = function (el, opts) {
+          if (!window.__batchCharts) {
+            window.__batchCharts = [...el.querySelectorAll('.chart-host')].map(host => {
+              const svg = host.querySelector('svg');
+              return { svg: svg ? Number(svg.getAttribute('width')) : 0, host: host.clientWidth };
+            });
+          }
+          return orig(el, opts);
+        };
+      });
       await page.locator('#btn-resumo').click();
       check(await page.locator('#exportOverlay').isVisible(), 'export progress dialog appears');
       const download = await downloadPromise;
       check(download.suggestedFilename() === 'Resumos 9C.zip', 'zip keeps the class name: ' + download.suggestedFilename());
+      const batchCharts = await page.evaluate(() => window.__batchCharts || []);
+      check(batchCharts.length === 2 && batchCharts.every(c => c.svg === 530 || (c.svg >= 440 && Math.abs(c.svg - c.host) <= 2)), 'class PDF charts render at their real width: ' + JSON.stringify(batchCharts));
       const zip = await JSZip.loadAsync(fs.readFileSync(await download.path()));
       const entries = Object.keys(zip.files).filter(name => !zip.files[name].dir);
       check(entries.length === total, 'zip contains one PDF per student');

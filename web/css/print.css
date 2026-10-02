@@ -1,11 +1,60 @@
 /* ============================================================================
-   Painel de Aprendizagem — folha de estilo de impressão
-   Uso: botão "Gerar resumo da reunião" → "Imprimir / salvar PDF"
+   Painel de Aprendizagem — layout compacto do resumo
+   ----------------------------------------------------------------------------
+   O mesmo layout é usado em dois lugares:
+     - impressão do resumo individual ("Imprimir / salvar PDF")
+     - PDFs por aluno gerados no ZIP da turma (#exportStage)
+   Por isso as regras de layout ficam fora do @media print: a exportação em ZIP
+   rasteriza exatamente o que a impressão mostraria.
    ========================================================================== */
 
 @page {
   size: A4;
   margin: 14mm 13mm;
+}
+
+.print-compacto { font-size: 11.5px; }
+
+.print-compacto .card,
+.print-compacto .metric,
+.print-compacto .print-stats > div,
+.print-compacto .box-cell,
+.print-compacto .insight {
+  box-shadow: none !important;
+  break-inside: avoid;
+}
+
+.print-compacto h1 { font-size: 22px !important; }
+.print-compacto .card-title { font-size: 15px !important; }
+.print-compacto .card { padding: 10px 0 !important; border: 0 !important; border-top: 1px solid #ddd !important; border-radius: 0 !important; }
+.print-compacto .card-desc { font-size: 10.5px !important; }
+.print-compacto .print-head h1 { font-size: 24px !important; }
+.print-compacto .print-stats b { font-size: 16px !important; }
+
+.print-compacto .chart-host svg { width: 100% !important; height: auto !important; }
+.print-compacto .card-help { display: none !important; }
+.print-compacto .heat td { padding: 5px 6px !important; font-size: 10.5px !important; }
+.print-compacto .heat th { font-size: 10px !important; }
+.print-compacto .data-table { font-size: 10px !important; }
+.print-compacto .tooltip { display: none !important; }
+.print-compacto .print-traj-layout { grid-template-columns: 150px minmax(0, 1fr); gap: 14px; break-inside: avoid; }
+.print-compacto .print-legend .legend-chip { break-inside: avoid; }
+.print-compacto .print-disciplines { font-size: 10.5px !important; }
+.print-compacto .print-disciplines th,
+.print-compacto .print-disciplines td { padding: 5px 6px !important; }
+.print-compacto .print-disciplines tr { break-inside: avoid; }
+.print-compacto .print-disciplines thead { display: table-header-group; }
+.print-compacto .print-foot { font-size: 9.5px !important; color: #666 !important; }
+
+/* palco da exportação: conteúdo na mesma largura útil da folha A4 (184mm ≈ 695px) */
+.print-stage .print-report {
+  width: 695px;
+  max-width: none;
+  margin: 0;
+  padding: 0;
+  background: #fff;
+  box-shadow: none;
+  border-radius: 0;
 }
 
 @media print {
@@ -37,40 +86,5 @@
     overflow: visible !important;
   }
 
-  .print-report .card,
-  .print-report .metric,
-  .print-report .print-stats > div,
-  .print-report .box-cell,
-  .print-report .insight {
-    box-shadow: none !important;
-    break-inside: avoid;
-  }
-
-  .print-report h1 { font-size: 22px !important; }
-  .print-report .card-title { font-size: 15px !important; }
-  .print-report .card { padding: 10px 0 !important; border: 0 !important; border-top: 1px solid #ddd !important; border-radius: 0 !important; }
-  .print-report .card-desc { font-size: 10.5px !important; }
-  .print-report .print-head h1 { font-size: 24px !important; }
-  .print-report .print-stats b { font-size: 16px !important; }
-
-  .print-report .chart-host svg { width: 100% !important; height: auto !important; }
-  .print-report .card-help { display: none !important; }
-  .print-report .heat td { padding: 5px 6px !important; font-size: 10.5px !important; }
-  .print-report .heat th { font-size: 10px !important; }
-  .print-report .data-table { font-size: 10px !important; }
-  .print-report .tooltip { display: none !important; }
-  .print-report .print-traj-layout { grid-template-columns: 150px minmax(0, 1fr); gap: 14px; break-inside: avoid; }
-  .print-report .print-legend .legend-chip { break-inside: avoid; }
-  .print-report .print-disciplines { font-size: 10.5px !important; }
-  .print-report .print-disciplines th,
-  .print-report .print-disciplines td { padding: 5px 6px !important; }
-  .print-report .print-disciplines tr { break-inside: avoid; }
-  .print-report .print-disciplines thead { display: table-header-group; }
-
-  /* resumo de turma: cada aluno começa em uma nova página */
-  .print-report + .print-report { break-before: page; page-break-before: always; }
-
   a, a:visited { text-decoration: none; color: #000; }
-
-  .print-foot { font-size: 9.5px !important; color: #666 !important; }
 }
